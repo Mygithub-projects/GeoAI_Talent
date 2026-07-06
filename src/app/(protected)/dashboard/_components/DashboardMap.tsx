@@ -195,6 +195,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
   useEffect(() => {
     if (appMode !== 'A') return
     if (mapMode === 'heatmap') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-change, not a derived-state anti-pattern
       fetchHeatmap(selectedItemIds, centre, radiusKm)
     } else {
       fetchPins(selectedItemIds, centre, radiusKm)
@@ -209,6 +210,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
   useEffect(() => {
     if (appMode !== 'B') return
     if (!centre) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-change, not a derived-state anti-pattern
       setPins([])
       fetchHeatmap(selectedItemIds, null, radiusKm)
       return
@@ -236,6 +238,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
 
   useEffect(() => {
     if (engagementId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-change, not a derived-state anti-pattern
       fetchEngagementStatus(engagementId)
     } else {
       setInvitedTrainers([])

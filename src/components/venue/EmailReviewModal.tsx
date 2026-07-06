@@ -46,6 +46,7 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
 
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting on close, not a derived-state anti-pattern
       setResults(null)
       setError(null)
       return
