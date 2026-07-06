@@ -31,6 +31,10 @@ export async function approveUser(
 ) {
   await requireAdmin()
 
+  if (role === 'user' && !district) {
+    throw new Error('Standard users must be assigned a district.')
+  }
+
   const adminClient = createAdminClient()
   const { error } = await adminClient
     .from('profiles')
@@ -53,6 +57,10 @@ export async function changeUserRole(
   district: string | null
 ) {
   await requireAdmin()
+
+  if (role === 'user' && !district) {
+    throw new Error('Standard users must be assigned a district.')
+  }
 
   const adminClient = createAdminClient()
 

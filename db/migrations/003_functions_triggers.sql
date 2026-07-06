@@ -23,7 +23,9 @@ $$;
 
 -- ─── Trigger: handle_new_user ────────────────────────────────
 -- Fires AFTER INSERT on auth.users.
--- Creates the matching profiles row, auto-activating allowlisted emails as admins.
+-- Creates the matching profiles row.
+-- Allowlisted emails are auto-set to role=admin, status=active on sign-up.
+-- All other registrations start as role=user, status=pending (await admin approval).
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql

@@ -43,27 +43,28 @@ COMMENT ON COLUMN public.profiles.ppd_district IS 'District assignment set by ad
 -- Run AFTER 001_profiles.sql
 -- ============================================================
 
--- Admin allowlist: these emails bypass domain restriction and are auto-activated as admins
+-- Admin allowlist: these emails bypass the domain restriction and are auto-set to
+-- role=admin, status=active on sign-up. All other registrations start as role=user.
 CREATE TABLE IF NOT EXISTS public.admin_allowlist (
   email       TEXT        PRIMARY KEY,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 COMMENT ON TABLE public.admin_allowlist IS
-  'Emails in this list bypass domain restriction on registration and are auto-set to role=admin, status=active by the handle_new_user trigger.';
+  'Emails in this list bypass the domain restriction on registration and are auto-set to role=admin, status=active by the handle_new_user trigger. All other accounts start as role=user, status=pending.';
 
--- Seed the initial admin accounts
--- Two are non-@moe.gov.my; they are domain-exempt via this list.
+-- Seed the owner admin accounts.
+-- All three are non-@moe.gov.my; they are domain-exempt via this list.
 INSERT INTO public.admin_allowlist (email) VALUES
   ('wun@iegcampus.com'),
   ('mich88lim@gmail.com'),
-  ('michelle.lim@moe.gov.my')
+  ('michelle.lim@gmail.com')
 ON CONFLICT DO NOTHING;
 
--- Fallback: if these admins registered before this migration, promote them now.
+-- Fallback: if these accounts registered before this migration, promote them to admin now.
 UPDATE public.profiles
 SET role = 'admin', status = 'active'
-WHERE email IN ('wun@iegcampus.com', 'mich88lim@gmail.com', 'michelle.lim@moe.gov.my')
+WHERE email IN ('wun@iegcampus.com', 'mich88lim@gmail.com', 'michelle.lim@gmail.com')
   AND (role != 'admin' OR status != 'active');
 
 
@@ -94,7 +95,9 @@ $$;
 
 -- ─── Trigger: handle_new_user ────────────────────────────────
 -- Fires AFTER INSERT on auth.users.
--- Creates the matching profiles row, auto-activating allowlisted emails as admins.
+-- Creates the matching profiles row.
+-- Allowlisted emails are auto-set to role=admin, status=active on sign-up.
+-- All other registrations start as role=user, status=pending (await admin approval).
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql

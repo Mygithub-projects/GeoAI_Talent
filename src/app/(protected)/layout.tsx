@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AppShell } from '@/components/shell/AppShell'
 
 export default async function ProtectedLayout({
@@ -24,10 +25,21 @@ export default async function ProtectedLayout({
     redirect('/awaiting-approval')
   }
 
+  let pendingCount = 0
+  if (profile.role === 'admin') {
+    const admin = createAdminClient()
+    const { count } = await admin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'pending')
+    pendingCount = count ?? 0
+  }
+
   return (
     <AppShell
       userName={profile.full_name ?? null}
       userRole={profile.role ?? 'user'}
+      pendingCount={pendingCount}
     >
       {children}
     </AppShell>

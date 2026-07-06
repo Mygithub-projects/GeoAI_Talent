@@ -6,6 +6,7 @@ import { computeLandCost, chooseTransportMode, type TravelRates } from '@/lib/tr
 import { estimateFare } from '@/lib/fareLookup'
 
 interface RecommendBody {
+  engagement_id?:    string | null
   target_item_ids?:  number[]
   venue_lat:         number
   venue_long:        number
@@ -15,6 +16,7 @@ interface RecommendBody {
   end_date:          string
   radius_km?:        number
   training_title?:   string
+  trainers_needed?:  number
 }
 
 type AvailableRow = {
@@ -31,6 +33,8 @@ type AvailableRow = {
   straight_line_km:   number
 }
 
+const REUSABLE_STATUSES = ['Draft', 'Pending Invite']
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -44,6 +48,7 @@ export async function POST(req: NextRequest) {
   }
 
   const {
+    engagement_id,
     target_item_ids,
     venue_lat,
     venue_long,
@@ -53,6 +58,7 @@ export async function POST(req: NextRequest) {
     end_date,
     radius_km = 50,
     training_title,
+    trainers_needed,
   } = body
 
   if (
@@ -76,6 +82,30 @@ export async function POST(req: NextRequest) {
 
   const clampedRadius = Math.max(1, Math.min(500, radius_km))
 
+  // ── 0. Resolve engagement: reuse an existing Draft/Pending Invite workshop, or create fresh ──
+  let engagementId: string | null = null
+  let trainersNeededResolved = Math.max(1, Math.round(trainers_needed ?? 1))
+
+  if (engagement_id) {
+    const { data: existing, error: existingErr } = await supabase
+      .from('training_engagements')
+      .select('engagement_id, workflow_status, trainers_needed')
+      .eq('engagement_id', engagement_id)
+      .single()
+
+    if (existingErr || !existing) {
+      return NextResponse.json({ error: 'Engagement not found' }, { status: 404 })
+    }
+    if (!REUSABLE_STATUSES.includes(existing.workflow_status as string)) {
+      return NextResponse.json(
+        { error: `Engagement is already ${existing.workflow_status}; cannot add another invite round.` },
+        { status: 409 },
+      )
+    }
+    engagementId = existing.engagement_id as string
+    trainersNeededResolved = existing.trainers_needed as number
+  }
+
   // ── 1. Available trainers (SECURITY DEFINER bypasses RLS for cross-district + conflict check) ──
   const { data: rows, error: rpcErr } = await supabase.rpc('fn_available_trainers', {
     p_venue_lat:  venue_lat,
@@ -84,6 +114,7 @@ export async function POST(req: NextRequest) {
     p_start_date: start_date,
     p_end_date:   end_date,
     p_item_ids:   (target_item_ids?.length ?? 0) > 0 ? target_item_ids : null,
+    p_exclude_engagement_id: engagementId,
   })
 
   if (rpcErr) {
@@ -93,7 +124,11 @@ export async function POST(req: NextRequest) {
 
   const candidates_raw = (rows ?? []) as AvailableRow[]
   if (candidates_raw.length === 0) {
-    return NextResponse.json({ engagement_id: null, candidates: [] })
+    return NextResponse.json({
+      engagement_id: engagementId,
+      trainers_needed: trainersNeededResolved,
+      candidates: [],
+    })
   }
 
   // ── 2. Travel rates ──────────────────────────────────────────────────────────────────────────
@@ -208,31 +243,34 @@ export async function POST(req: NextRequest) {
   enriched.sort((a, b) => a.distance_km - b.distance_km || a.cost_myr - b.cost_myr)
   const candidates = enriched.map((c, i) => ({ ...c, rank: i + 1 }))
 
-  // ── 5. INSERT Draft engagement ────────────────────────────────────────────────────────────────
-  const { data: engData, error: engErr } = await supabase
-    .from('training_engagements')
-    .insert({
-      training_title:     training_title?.trim() || `Workshop ${start_date}`,
-      target_item_id:     (target_item_ids?.length ?? 0) > 0 ? target_item_ids![0] : null,
-      dynamic_venue_name: venue_name       ?? null,
-      venue_school_code:  venue_school_code ?? null,
-      venue_lat,
-      venue_long,
-      search_radius_km:   clampedRadius,
-      start_date,
-      end_date,
-      workflow_status:    'Draft',
-      created_by:         user.id,
-    })
-    .select('engagement_id')
-    .single()
+  // ── 5. Create the workshop's Draft engagement on the FIRST round only; later rounds reuse it ──
+  if (!engagementId) {
+    const { data: engData, error: engErr } = await supabase
+      .from('training_engagements')
+      .insert({
+        training_title:     training_title?.trim() || `Workshop ${start_date}`,
+        target_item_id:     (target_item_ids?.length ?? 0) > 0 ? target_item_ids![0] : null,
+        dynamic_venue_name: venue_name       ?? null,
+        venue_school_code:  venue_school_code ?? null,
+        venue_lat,
+        venue_long,
+        search_radius_km:   clampedRadius,
+        start_date,
+        end_date,
+        trainers_needed:    trainersNeededResolved,
+        workflow_status:    'Draft',
+        created_by:         user.id,
+      })
+      .select('engagement_id')
+      .single()
 
-  if (engErr || !engData) {
-    console.error('[recommend] engagement insert', engErr)
-    return NextResponse.json({ error: 'Failed to create engagement record' }, { status: 500 })
+    if (engErr || !engData) {
+      console.error('[recommend] engagement insert', engErr)
+      return NextResponse.json({ error: 'Failed to create engagement record' }, { status: 500 })
+    }
+
+    engagementId = engData.engagement_id as string
   }
-
-  const engagementId = engData.engagement_id as string
 
   // ── 6. UPSERT travel_logs (admin client — no user INSERT policy on travel_logs) ─────────────
   const adminClient = createAdminClient()
@@ -257,5 +295,9 @@ export async function POST(req: NextRequest) {
     console.error('[recommend] travel_logs upsert', logErr)
   }
 
-  return NextResponse.json({ engagement_id: engagementId, candidates })
+  return NextResponse.json({
+    engagement_id: engagementId,
+    trainers_needed: trainersNeededResolved,
+    candidates,
+  })
 }

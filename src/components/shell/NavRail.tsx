@@ -9,6 +9,7 @@ interface NavRailProps {
   expanded: boolean
   onToggle: () => void
   userRole: string
+  pendingCount?: number
 }
 
 interface NavItem {
@@ -70,15 +71,15 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
   )
 }
 
-export function NavRail({ expanded, onToggle, userRole }: NavRailProps) {
+export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavRailProps) {
   const pathname = usePathname()
   const { t } = useLanguage()
 
   const navItems = [
-    { href: '/dashboard', label: t.map.navDashboard,    icon: <MapIcon />,      adminOnly: false },
-    { href: '/search',    label: t.map.navSearch,       icon: <SearchIcon />,   adminOnly: false },
-    { href: '/engagements', label: t.map.navEngagements, icon: <CalendarIcon />, adminOnly: false },
-    { href: '/admin/users', label: t.map.navAdmin,      icon: <ShieldIcon />,   adminOnly: true  },
+    { href: '/dashboard',   label: t.map.navDashboard,    icon: <MapIcon />,      adminOnly: false, badge: 0 },
+    { href: '/search',      label: t.map.navSearch,       icon: <SearchIcon />,   adminOnly: false, badge: 0 },
+    { href: '/engagements', label: t.map.navEngagements,  icon: <CalendarIcon />, adminOnly: false, badge: 0 },
+    { href: '/admin/users', label: t.map.navAdmin,        icon: <ShieldIcon />,   adminOnly: true,  badge: pendingCount },
   ]
 
   return (
@@ -115,7 +116,7 @@ export function NavRail({ expanded, onToggle, userRole }: NavRailProps) {
                 href={item.href}
                 title={!expanded ? item.label : undefined}
                 className={`
-                  flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
+                  relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
                   transition-colors duration-150
                   ${isActive
                     ? 'bg-white/15 text-white'
@@ -124,8 +125,34 @@ export function NavRail({ expanded, onToggle, userRole }: NavRailProps) {
                   ${!expanded ? 'justify-center' : ''}
                 `}
               >
-                <span className="flex-shrink-0">{item.icon}</span>
+                <span className="relative flex-shrink-0">
+                  {item.icon}
+                  {item.badge > 0 && (
+                    <span style={{
+                      position: 'absolute', top: -5, right: -6,
+                      minWidth: 16, height: 16,
+                      background: '#EF4444', color: '#fff',
+                      fontSize: 9, fontWeight: 800, lineHeight: '16px',
+                      borderRadius: 99, textAlign: 'center',
+                      padding: '0 3px', letterSpacing: 0,
+                      border: '1.5px solid #0E2F57',
+                    }}>
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </span>
                 {expanded && <span className="truncate">{item.label}</span>}
+                {expanded && item.badge > 0 && (
+                  <span style={{
+                    marginLeft: 'auto', minWidth: 18, height: 18,
+                    background: '#EF4444', color: '#fff',
+                    fontSize: 10, fontWeight: 800, lineHeight: '18px',
+                    borderRadius: 99, textAlign: 'center',
+                    padding: '0 4px', flexShrink: 0,
+                  }}>
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </Link>
             )
           })

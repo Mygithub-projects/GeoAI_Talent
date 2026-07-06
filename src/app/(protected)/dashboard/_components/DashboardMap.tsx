@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapControls } from '@/components/map/MapControls'
 import type { TrainerPoint } from '@/components/map/TrainerDots'
 import type { PPDPoint } from '@/components/map/PPDPins'
 import type { FlyToTarget, FitBoundsTarget } from '@/components/map/MapInner'
 import type { VenueOption } from '@/components/venue/VenueAutocomplete'
+import type { SentResult, SkippedResult } from '@/components/venue/EmailReviewModal'
+import type { InvitedTrainerStatus } from '@/components/venue/RecommendationPanel'
 import { useLanguage } from '@/i18n/LanguageProvider'
 
 const DRILL_ZOOM = 10
@@ -70,6 +72,19 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
   const [isRecommending, setIsRecommending] = useState(false)
   const [recommendations, setRecommendations] = useState<TrainerPoint[]>([])
   const [engagementId, setEngagementId] = useState<string | null>(null)
+  const [trainingTitle, setTrainingTitle] = useState('')
+  const [trainersNeeded, setTrainersNeeded] = useState(1)
+
+  // ── Multi-trainer batch invite state ───────────────────────────
+  const [invitedTrainers, setInvitedTrainers] = useState<InvitedTrainerStatus[]>([])
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false)
+  const [selectedTrainerIds, setSelectedTrainerIds] = useState<Set<string>>(new Set())
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+
+  const invitedTrainerIds = useMemo(
+    () => new Set(invitedTrainers.map(t => t.trainer_id)),
+    [invitedTrainers],
+  )
 
   // Zoom-based mode (Mode A only)
   const mapMode: 'heatmap' | 'pins' = mapZoom >= DRILL_ZOOM ? 'pins' : 'heatmap'
@@ -190,19 +205,48 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
   // ── Mode B: re-fetch venue trainers on filter / radius change ──
   // mapMode intentionally excluded — zoom must not trigger re-fetch or fitBounds
   // startDate/endDate intentionally excluded — date change must not clear recommendations
+  // No venue set yet: show the statewide heatmap instead of a blank map.
   useEffect(() => {
     if (appMode !== 'B') return
     if (!centre) {
       setPins([])
-      setHeatPoints([])
-      setLoading(false)
+      fetchHeatmap(selectedItemIds, null, radiusKm)
       return
     }
+    setHeatPoints([])
     fetchVenueTrainers(selectedItemIds, centre, radiusKm)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appMode, selectedItemIds, centre, radiusKm])
 
-  // ── Phase 4: recommend ────────────────────────────────────────
+  // ── Live trainer accept/decline status for the active engagement ──
+  const fetchEngagementStatus = useCallback(async (engId: string) => {
+    setIsRefreshingStatus(true)
+    try {
+      const res = await fetch(`/api/engagements/status?engagement_id=${encodeURIComponent(engId)}`)
+      if (!res.ok) throw new Error('status fetch failed')
+      const data = await res.json()
+      setInvitedTrainers(data.trainers ?? [])
+      if (typeof data.trainers_needed === 'number') setTrainersNeeded(data.trainers_needed)
+    } catch (err) {
+      console.error('[DashboardMap] status fetch error', err)
+    } finally {
+      setIsRefreshingStatus(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (engagementId) {
+      fetchEngagementStatus(engagementId)
+    } else {
+      setInvitedTrainers([])
+    }
+  }, [engagementId, fetchEngagementStatus])
+
+  const handleRefreshStatus = useCallback(() => {
+    if (engagementId) fetchEngagementStatus(engagementId)
+  }, [engagementId, fetchEngagementStatus])
+
+  // ── Phase 4: recommend (reuses engagementId across invite rounds) ──
   const handleRecommend = useCallback(async () => {
     if (!centre || !startDate || !endDate) return
     setIsRecommending(true)
@@ -211,6 +255,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          engagement_id:   engagementId ?? undefined,
           target_item_ids: selectedItemIds.length > 0 ? selectedItemIds : undefined,
           venue_lat:       centre[0],
           venue_long:     centre[1],
@@ -218,14 +263,20 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
           start_date:     startDate,
           end_date:       endDate,
           radius_km:      radiusKm,
+          training_title:  trainingTitle || undefined,
+          trainers_needed: trainersNeeded,
         }),
       })
       if (!res.ok) throw new Error('recommend failed')
       const data = await res.json()
-      const candidates: TrainerPoint[] = data.candidates ?? []
+      const rawCandidates: TrainerPoint[] = data.candidates ?? []
+      // Defensive: drop anyone already invited, in case the candidate list
+      // hasn't been re-fetched since the last batch send.
+      const candidates = rawCandidates.filter(c => !invitedTrainerIds.has(c.trainer_id))
       setPins(candidates)
       setRecommendations(candidates)
       setEngagementId(data.engagement_id ?? null)
+      if (typeof data.trainers_needed === 'number') setTrainersNeeded(data.trainers_needed)
       if (candidates.length > 0 && centre) {
         const b = computeBounds(candidates, centre)
         if (b) { fitBoundsKeyRef.current += 1; setFitBoundsTarget({ bounds: b, key: fitBoundsKeyRef.current }) }
@@ -235,7 +286,36 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     } finally {
       setIsRecommending(false)
     }
-  }, [centre, selectedItemIds, startDate, endDate, radiusKm, venueName])
+  }, [centre, selectedItemIds, startDate, endDate, radiusKm, venueName, engagementId, trainingTitle, trainersNeeded, invitedTrainerIds])
+
+  // ── Multi-trainer batch invite ─────────────────────────────────
+  const handleToggleSelectTrainer = useCallback((trainerId: string) => {
+    setSelectedTrainerIds(prev => {
+      const next = new Set(prev)
+      if (next.has(trainerId)) next.delete(trainerId)
+      else next.add(trainerId)
+      return next
+    })
+  }, [])
+
+  const handleOpenReview  = useCallback(() => setReviewModalOpen(true), [])
+  const handleCloseReview = useCallback(() => setReviewModalOpen(false), [])
+
+  const handleInviteSent = useCallback((results: { sent: SentResult[]; skipped: SkippedResult[] }) => {
+    const sentIds = new Set(results.sent.map(r => r.trainer_id))
+    if (sentIds.size === 0) return
+    setSelectedTrainerIds(prev => {
+      const next = new Set(prev)
+      for (const id of sentIds) next.delete(id)
+      return next
+    })
+    setRecommendations(prev => prev.filter(c => !sentIds.has(c.trainer_id)))
+    setPins(prev => prev.filter(c => !sentIds.has(c.trainer_id)))
+    // engagementId doesn't change across invite rounds, so the status
+    // effect won't refire on its own — refetch explicitly to pick up
+    // the real just-created rows.
+    if (engagementId) fetchEngagementStatus(engagementId)
+  }, [engagementId, fetchEngagementStatus])
 
   // ── Mode switch ───────────────────────────────────────────────
   const handleSetAppMode = useCallback((newMode: 'A' | 'B') => {
@@ -251,8 +331,12 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     setFlyToTarget(null)
     setStartDate('')
     setEndDate('')
+    setTrainingTitle('')
+    setTrainersNeeded(1)
     setRecommendations([])
     setEngagementId(null)
+    setSelectedTrainerIds(new Set())
+    setReviewModalOpen(false)
   }, [])
 
   const appModeRef = useRef(appMode)
@@ -309,6 +393,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     // Clear any previous recommendation results for the old venue
     setRecommendations([])
     setEngagementId(null)
+    setSelectedTrainerIds(new Set())
+    setReviewModalOpen(false)
     flyKeyRef.current += 1
     setFlyToTarget({ lat: opt.lat, lng: opt.lng, zoom: 12, key: flyKeyRef.current })
   }, [])
@@ -321,6 +407,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     setPins([])
     setRecommendations([])
     setEngagementId(null)
+    setSelectedTrainerIds(new Set())
+    setReviewModalOpen(false)
   }, [])
 
   const handleClearCentre = useCallback(() => {
@@ -334,7 +422,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
 
   // ── Derived ───────────────────────────────────────────────────
   const trainersCount = appMode === 'B'
-    ? pins.length
+    ? (centre ? pins.length : heatPoints.length)
     : (mapMode === 'heatmap' ? heatPoints.length : pins.length)
 
   const centreLabel = appMode === 'B'
@@ -396,6 +484,19 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
           isRecommending={isRecommending}
           recommendations={recommendations}
           engagementId={engagementId}
+          trainingTitle={trainingTitle}
+          onTrainingTitleChange={setTrainingTitle}
+          trainersNeeded={trainersNeeded}
+          onTrainersNeededChange={setTrainersNeeded}
+          selectedTrainerIds={selectedTrainerIds}
+          onToggleSelectTrainer={handleToggleSelectTrainer}
+          invitedTrainers={invitedTrainers}
+          onRefreshStatus={handleRefreshStatus}
+          isRefreshingStatus={isRefreshingStatus}
+          reviewModalOpen={reviewModalOpen}
+          onOpenReview={handleOpenReview}
+          onCloseReview={handleCloseReview}
+          onInviteSent={handleInviteSent}
         />
       </div>
     </div>

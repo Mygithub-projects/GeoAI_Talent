@@ -33,8 +33,9 @@ export default async function DashboardPage() {
   let initialCenter: [number, number] = SARAWAK_CENTER
   let initialZoom = SARAWAK_ZOOM
 
-  // Non-admin users with a district: zoom to their district centroid
-  if (profile.ppd_district && profile.role !== 'admin') {
+  // Non-admin users with a specific district: zoom to their district centroid.
+  // Statewide (state officer) users fall through to the statewide default, like admins.
+  if (profile.ppd_district && profile.ppd_district !== 'STATEWIDE' && profile.role !== 'admin') {
     const { data: centroidRaw } = await supabase
       .rpc('fn_district_centroid', { p_district: profile.ppd_district })
       .single()

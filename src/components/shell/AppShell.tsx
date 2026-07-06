@@ -10,9 +10,10 @@ interface AppShellProps {
   children: React.ReactNode
   userName: string | null
   userRole: string
+  pendingCount?: number
 }
 
-export function AppShell({ children, userName, userRole }: AppShellProps) {
+export function AppShell({ children, userName, userRole, pendingCount = 0 }: AppShellProps) {
   const [navExpanded, setNavExpanded] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
 
@@ -32,6 +33,7 @@ export function AppShell({ children, userName, userRole }: AppShellProps) {
           expanded={navExpanded}
           onToggle={() => setNavExpanded(v => !v)}
           userRole={userRole}
+          pendingCount={pendingCount}
         />
 
         <main className="relative flex-1 overflow-hidden">

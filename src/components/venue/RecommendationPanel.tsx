@@ -3,9 +3,24 @@
 import type { TrainerPoint, TravelOption } from '@/components/map/TrainerDots'
 import { useLanguage } from '@/i18n/LanguageProvider'
 
+export interface InvitedTrainerStatus {
+  trainer_id:   string
+  trainer_name: string
+  status:       'Pending Invite' | 'Confirmed' | 'Declined'
+  invited_at:   string
+  responded_at: string | null
+}
+
 interface RecommendationPanelProps {
-  candidates:   TrainerPoint[]
-  engagementId: string | null
+  candidates:          TrainerPoint[]
+  engagementId:        string | null
+  selectedIds:         Set<string>
+  onToggleSelect:      (trainerId: string) => void
+  onOpenReview:        () => void
+  trainersNeeded:      number | null
+  invitedTrainers:     InvitedTrainerStatus[]
+  onRefreshStatus:     () => void
+  isRefreshingStatus:  boolean
 }
 
 function ModeChip({ mode }: { mode: string }) {
@@ -33,34 +48,33 @@ function ModeChip({ mode }: { mode: string }) {
   )
 }
 
-function RankBadge({ rank }: { rank: number }) {
-  const isTop3 = rank <= 3
+function InvitedTrainerRow({ trainer }: { trainer: InvitedTrainerStatus }) {
+  const pill = trainer.status === 'Confirmed'
+    ? { text: '✓ Accepted', color: '#0F766E' }
+    : trainer.status === 'Declined'
+    ? { text: '✗ Declined', color: '#B91C1C' }
+    : { text: '⏳ Awaiting', color: '#92400E' }
   return (
-    <div
-      style={{
-        flexShrink: 0,
-        width: 24,
-        height: 24,
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: isTop3 ? '#F2A341' : '#E2E8F0',
-        color: isTop3 ? '#7C2D12' : '#475569',
-        fontSize: 10,
-        fontWeight: 800,
-        fontFamily: "'Inter', system-ui, sans-serif",
-      }}
-    >
-      {rank}
+    <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid #F1F5F9' }}>
+      <span style={{ fontSize: 11, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {trainer.trainer_name}
+      </span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: pill.color, whiteSpace: 'nowrap', flexShrink: 0 }}>
+        {pill.text}
+      </span>
     </div>
   )
 }
 
-export function RecommendationPanel({ candidates, engagementId }: RecommendationPanelProps) {
+export function RecommendationPanel({
+  candidates, engagementId, selectedIds, onToggleSelect, onOpenReview, trainersNeeded,
+  invitedTrainers, onRefreshStatus, isRefreshingStatus,
+}: RecommendationPanelProps) {
   const { t } = useLanguage()
 
-  if (candidates.length === 0) return null
+  if (candidates.length === 0 && invitedTrainers.length === 0) return null
+
+  const confirmedCount = invitedTrainers.filter(inv => inv.status === 'Confirmed').length
 
   return (
     <div
@@ -91,6 +105,9 @@ export function RecommendationPanel({ candidates, engagementId }: Recommendation
       >
         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.3px' }}>
           {t.map.recommendations}
+          {trainersNeeded != null && (
+            <span style={{ fontWeight: 500, opacity: 0.75 }}> · {t.map.trainersNeeded}: {trainersNeeded}</span>
+          )}
         </span>
         <span
           style={{
@@ -126,10 +143,18 @@ export function RecommendationPanel({ candidates, engagementId }: Recommendation
               display: 'flex',
               gap: 8,
               alignItems: 'flex-start',
+              background: selectedIds.has(c.trainer_id) ? '#EFF6FF' : 'transparent',
             }}
           >
-            {/* Rank badge */}
-            {c.rank != null && <RankBadge rank={c.rank} />}
+            {/* Checkbox */}
+            <input
+              type="checkbox"
+              checked={selectedIds.has(c.trainer_id)}
+              onChange={() => onToggleSelect(c.trainer_id)}
+              disabled={!engagementId}
+              style={{ marginTop: 2, width: 14, height: 14, flexShrink: 0, cursor: engagementId ? 'pointer' : 'not-allowed' }}
+              aria-label={t.batchInvite.selectTrainers}
+            />
 
             {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -207,9 +232,40 @@ export function RecommendationPanel({ candidates, engagementId }: Recommendation
                   </div>
                 ))
               }
+
             </div>
           </div>
         ))}
+
+        {/* Invited trainers — live accept/decline status for this workshop */}
+        {invitedTrainers.length > 0 && (
+          <div style={{ borderTop: '2px solid #E2E8F0' }}>
+            <div style={{ padding: '8px 12px 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                {t.batchInvite.invitedTrainersLabel}
+                {trainersNeeded != null && (
+                  <span style={{ fontFamily: 'monospace', fontWeight: 800, color: '#0F766E' }}> · {confirmedCount}/{trainersNeeded}</span>
+                )}
+              </span>
+              <button
+                onClick={onRefreshStatus}
+                disabled={isRefreshingStatus}
+                title={t.batchInvite.refreshStatus}
+                aria-label={t.batchInvite.refreshStatus}
+                style={{
+                  fontSize: 12, lineHeight: 1, border: 'none', background: 'transparent',
+                  color: '#64748B', cursor: isRefreshingStatus ? 'not-allowed' : 'pointer',
+                  opacity: isRefreshingStatus ? 0.5 : 1, padding: 2,
+                }}
+              >
+                ↻
+              </button>
+            </div>
+            {invitedTrainers.map(inv => (
+              <InvitedTrainerRow key={inv.trainer_id} trainer={inv} />
+            ))}
+          </div>
+        )}
 
         {/* Engagement ref */}
         {engagementId && (
@@ -220,6 +276,34 @@ export function RecommendationPanel({ candidates, engagementId }: Recommendation
           </div>
         )}
       </div>
+
+      {/* Batch invite action bar (appears once something is selected) */}
+      {selectedIds.size > 0 && (
+        <div
+          style={{
+            padding: '8px 12px',
+            background: '#0E2F57',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'white' }}>
+            {selectedIds.size} {t.batchInvite.selectedLabel}
+          </span>
+          <button
+            onClick={onOpenReview}
+            style={{
+              fontSize: 10, fontWeight: 700, color: '#0E2F57', background: '#12B5AC',
+              border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t.batchInvite.finalizeAndInviteSelected} →
+          </button>
+        </div>
+      )}
 
       {/* Disclaimer footer */}
       <div

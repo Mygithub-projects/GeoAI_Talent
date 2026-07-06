@@ -13,6 +13,10 @@ export interface LandCostResult {
   cost_source: 'formula'
 }
 
+// Trainers within 150 km can make daily return trips → multiply by days.
+// Beyond 150 km the trainer stays on-site for the duration → one round trip only.
+const DAILY_RETURN_THRESHOLD_KM = 150
+
 export function computeLandCost(
   distanceKm: number,
   rates: TravelRates,
@@ -21,8 +25,9 @@ export function computeLandCost(
   const rate        = distanceKm <= 500 ? rates.road_per_km_0_500 : rates.road_per_km_over_500
   const roundTripKm = distanceKm * 2
   const safeDays    = Math.max(1, Math.round(days))
-  const cost_myr    = Math.round(roundTripKm * rate * safeDays * 100) / 100
-  const cost_note   = safeDays > 1
+  const applyDays   = distanceKm < DAILY_RETURN_THRESHOLD_KM
+  const cost_myr    = Math.round(roundTripKm * rate * (applyDays ? safeDays : 1) * 100) / 100
+  const cost_note   = applyDays && safeDays > 1
     ? `${roundTripKm.toFixed(1)} km round trip × RM${rate.toFixed(2)}/km × ${safeDays} days`
     : `${roundTripKm.toFixed(1)} km round trip × RM${rate.toFixed(2)}/km`
   return { cost_myr, cost_note, cost_source: 'formula' }

@@ -95,8 +95,9 @@ export function MapInner({
   onDrillDown,
   onZoomChange,
 }: MapInnerProps) {
-  // In Mode B: always show pins (never heatmap), never show PPD nav pins
-  const showHeatmap = appMode === 'A' && mode === 'heatmap'
+  // Mode B with no venue set yet: show the same statewide heatmap as Mode A
+  // so the map isn't blank while the user is still choosing a venue.
+  const showHeatmap = appMode === 'A' ? mode === 'heatmap' : !centre
   const showPins    = appMode === 'B' ? pins.length > 0 : mode === 'pins' && pins.length > 0
   const showPPDs    = appMode === 'A' && mode === 'heatmap' && ppds.length > 0
 

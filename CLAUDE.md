@@ -33,8 +33,10 @@ estimation and a human-approved invitation workflow.
 - **Single active language + translate function.** Stored EN/BM are the translation source for fixed
   content; free text translated on demand via `/api/translate`. Never show both languages at once.
 - **Security.** RLS enforced in the DB (district scope). Signed, single-use, expiring invitation tokens.
-  Registration domain-restricted (@moe.gov.my) OR on the admin allowlist. No self-promotion (role/status
-  changes are admin-only). Never remove the last admin. MFA for admins. Audit every sensitive action.
+  Registration domain-restricted (@moe.gov.my) OR on the admin allowlist. Admin allowlist:
+  wun@iegcampus.com, mich88lim@gmail.com, michelle.lim@gmail.com — auto-set to admin on sign-up.
+  All other accounts start as role=user, status=pending. No self-promotion (role/status changes are
+  admin-only). Never remove the last admin. MFA for admins. Audit every sensitive action.
 - **Identity.** One trainer = one person; many skills via `trainer_skills`. Trainer location derives from
   the school code.
 - **Never commit PII or secrets.** Real keys live in `.env.local` only. Keep the cleaned dataset out of

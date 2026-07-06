@@ -2,7 +2,8 @@
 
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { VenueSearchPanel } from '@/components/venue/VenueSearchPanel'
-import { RecommendationPanel } from '@/components/venue/RecommendationPanel'
+import { RecommendationPanel, type InvitedTrainerStatus } from '@/components/venue/RecommendationPanel'
+import { EmailReviewModal, type SentResult, type SkippedResult } from '@/components/venue/EmailReviewModal'
 import { SkillCheckboxFilter } from '@/components/map/SkillCheckboxFilter'
 import type { VenueOption } from '@/components/venue/VenueAutocomplete'
 import type { TrainerPoint } from '@/components/map/TrainerDots'
@@ -48,6 +49,20 @@ interface MapControlsProps {
   isRecommending:  boolean
   recommendations: TrainerPoint[]
   engagementId:    string | null
+  trainingTitle:          string
+  onTrainingTitleChange:  (v: string) => void
+  trainersNeeded:         number
+  onTrainersNeededChange: (n: number) => void
+  // Multi-trainer batch invite
+  selectedTrainerIds:    Set<string>
+  onToggleSelectTrainer: (trainerId: string) => void
+  invitedTrainers:       InvitedTrainerStatus[]
+  onRefreshStatus:       () => void
+  isRefreshingStatus:    boolean
+  reviewModalOpen:       boolean
+  onOpenReview:          () => void
+  onCloseReview:         () => void
+  onInviteSent:          (results: { sent: SentResult[]; skipped: SkippedResult[] }) => void
 }
 
 function LocationIcon() {
@@ -97,6 +112,19 @@ export function MapControls({
   isRecommending,
   recommendations,
   engagementId,
+  trainingTitle,
+  onTrainingTitleChange,
+  trainersNeeded,
+  onTrainersNeededChange,
+  selectedTrainerIds,
+  onToggleSelectTrainer,
+  invitedTrainers,
+  onRefreshStatus,
+  isRefreshingStatus,
+  reviewModalOpen,
+  onOpenReview,
+  onCloseReview,
+  onInviteSent,
 }: MapControlsProps) {
   const { t } = useLanguage()
 
@@ -158,6 +186,10 @@ export function MapControls({
             onEndDateChange={onEndDateChange}
             onRecommend={onRecommend}
             isRecommending={isRecommending}
+            trainingTitle={trainingTitle}
+            onTrainingTitleChange={onTrainingTitleChange}
+            trainersNeeded={trainersNeeded}
+            onTrainersNeededChange={onTrainersNeededChange}
           />
         )}
       </div>
@@ -202,10 +234,29 @@ export function MapControls({
       </div>
 
       {/* ── Recommendation panel — right side, Mode B only ── */}
-      {appMode === 'B' && recommendations.length > 0 && (
+      {appMode === 'B' && (recommendations.length > 0 || invitedTrainers.length > 0) && (
         <RecommendationPanel
           candidates={recommendations}
           engagementId={engagementId}
+          selectedIds={selectedTrainerIds}
+          onToggleSelect={onToggleSelectTrainer}
+          invitedTrainers={invitedTrainers}
+          onRefreshStatus={onRefreshStatus}
+          isRefreshingStatus={isRefreshingStatus}
+          onOpenReview={onOpenReview}
+          trainersNeeded={trainersNeeded}
+        />
+      )}
+
+      {engagementId && (
+        <EmailReviewModal
+          open={reviewModalOpen}
+          onClose={onCloseReview}
+          engagementId={engagementId}
+          selectedTrainers={recommendations
+            .filter(c => selectedTrainerIds.has(c.trainer_id))
+            .map(c => ({ trainer_id: c.trainer_id, trainer_name: c.trainer_name }))}
+          onSent={onInviteSent}
         />
       )}
 

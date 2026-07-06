@@ -7,9 +7,19 @@ import { Alert } from '@/components/ui/Alert'
 import type { Translations } from '@/i18n'
 import { approveUser, changeUserRole } from './actions'
 
+// Sentinel stored in profiles.ppd_district for non-admin users who should read
+// data across every district (e.g. a state-level officer) without being full admins.
+// Matched by the has_statewide_access() RLS helper, not by district equality.
+const STATEWIDE = 'STATEWIDE'
+
+// Must match master_trainers.ppd_district exactly (case-sensitive RLS equality check) —
+// these are the real district values from the ingested dataset, not administrative PPD-office groupings.
 const PPD_DISTRICTS = [
-  'Kuching', 'Samarahan', 'Serian', 'Sri Aman', 'Betong', 'Sarikei',
-  'Sibu', 'Mukah', 'Kapit', 'Bintulu', 'Miri', 'Limbang', 'JPN Sarawak',
+  'BARAM', 'BAU', 'BELAGA', 'BETONG', 'BINTULU', 'DALAT', 'DARO', 'JULAU',
+  'KANOWIT', 'KAPIT', 'KUCHING', 'LAWAS', 'LIMBANG', 'LUBOK ANTU', 'LUNDU',
+  'MERADONG', 'MIRI', 'MUKAH', 'PADAWAN', 'SAMARAHAN', 'SARATOK', 'SARIKEI',
+  'SELANGAU', 'SERIAN', 'SIBU', 'SIMUNJAN', 'SONG', 'SRI AMAN', 'SUBIS',
+  'TATAU SEBAUH', 'TATAU/SEBAUH',
 ]
 
 interface Profile {
@@ -38,6 +48,12 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+
+    if (role === 'user' && !district) {
+      setError(t.admin.districtRequiredError)
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -116,6 +132,7 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
                   className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue/30"
                 >
                   <option value="">— {t.admin.district} —</option>
+                  <option value={STATEWIDE}>{t.admin.statewideOption}</option>
                   {PPD_DISTRICTS.map(d => (
                     <option key={d} value={d}>{d}</option>
                   ))}

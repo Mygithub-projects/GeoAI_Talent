@@ -116,6 +116,39 @@ export interface Translations {
     noAvailableTrainers: string
     setDatesToSearch: string
     engagementRef: string
+    trainersNeeded: string
+  }
+  batchInvite: {
+    selectTrainers: string
+    selectedLabel: string
+    finalizeAndInviteSelected: string
+    reviewModalTitle: string
+    subjectLabel: string
+    bodyLabel: string
+    mergeFieldsHint: string
+    previewAsLabel: string
+    previewLinkNote: string
+    sendToAll: string
+    sending: string
+    sendResultsTitle: string
+    sendSuccessOne: string
+    sendFailedOne: string
+    retryFailed: string
+    done: string
+    invitedTrainersLabel: string
+    refreshStatus: string
+  }
+  invitationResponse: {
+    acceptedTitle: string
+    acceptedMessage: string
+    declinedTitle: string
+    declinedMessage: string
+    expiredTitle: string
+    expiredMessage: string
+    alreadyUsedTitle: string
+    alreadyUsedMessage: string
+    invalidTitle: string
+    invalidMessage: string
   }
   admin: {
     usersTitle: string
@@ -136,9 +169,11 @@ export interface Translations {
     approveModal: string
     approveDescription: string
     districtLabel: string
+    statewideOption: string
     roleAdmin: string
     roleUser: string
     lastAdminError: string
+    districtRequiredError: string
     mfaNote: string
     mfaInstructions: string
   }
@@ -264,6 +299,39 @@ export const en: Translations = {
     noAvailableTrainers: 'No available trainers found for these dates',
     setDatesToSearch: 'Set training dates to find available trainers',
     engagementRef: 'Engagement',
+    trainersNeeded: 'Trainers needed',
+  },
+  batchInvite: {
+    selectTrainers: 'Select trainers to invite',
+    selectedLabel: 'selected',
+    finalizeAndInviteSelected: 'Finalize & Invite Selected',
+    reviewModalTitle: 'Review invitation email',
+    subjectLabel: 'Subject',
+    bodyLabel: 'Message',
+    mergeFieldsHint: 'Use {{trainer_name}} to personalize the greeting — the training details card and Accept/Decline buttons are added automatically below your message.',
+    previewAsLabel: 'Preview as',
+    previewLinkNote: 'Accept/decline links are generated per trainer at send time',
+    sendToAll: 'Send to all',
+    sending: 'Sending…',
+    sendResultsTitle: 'Send results',
+    sendSuccessOne: 'Sent',
+    sendFailedOne: 'Failed',
+    retryFailed: 'Retry failed',
+    done: 'Done',
+    invitedTrainersLabel: 'Invited trainers',
+    refreshStatus: 'Refresh',
+  },
+  invitationResponse: {
+    acceptedTitle: 'Invitation accepted',
+    acceptedMessage: 'Thank you — your participation has been confirmed. The training coordinator has been notified.',
+    declinedTitle: 'Invitation declined',
+    declinedMessage: 'Your response has been recorded. Thank you for letting us know.',
+    expiredTitle: 'Link expired',
+    expiredMessage: 'This invitation link has expired. Please contact the training coordinator for assistance.',
+    alreadyUsedTitle: 'Already responded',
+    alreadyUsedMessage: 'This invitation has already been responded to.',
+    invalidTitle: 'Invalid link',
+    invalidMessage: 'This invitation link is invalid. Please contact the training coordinator for assistance.',
   },
   admin: {
     usersTitle: 'User management',
@@ -284,9 +352,11 @@ export const en: Translations = {
     approveModal: 'Approve account',
     approveDescription: 'Set the role and district for this user.',
     districtLabel: 'Assign district',
+    statewideOption: 'Statewide (State Officer — read-only, all districts)',
     roleAdmin: 'Administrator (JPN)',
     roleUser: 'Standard user (PPD / School)',
     lastAdminError: 'Cannot change: this is the last active administrator.',
+    districtRequiredError: 'Standard users must be assigned a district — otherwise they won\'t see any trainers on the map.',
     mfaNote: 'Administrator MFA setup',
     mfaInstructions:
       'To enable MFA for admin accounts: go to Supabase Dashboard → Authentication → Policies and enable "Enforce MFA for admin users". Admins can then set up TOTP in their account settings.',

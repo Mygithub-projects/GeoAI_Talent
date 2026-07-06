@@ -29,6 +29,11 @@ interface VenueSearchPanelProps {
   onEndDateChange:  (d: string) => void
   onRecommend:      () => void
   isRecommending:   boolean
+  // Multi-trainer workshop fields
+  trainingTitle:          string
+  onTrainingTitleChange:  (v: string) => void
+  trainersNeeded:         number
+  onTrainersNeededChange: (n: number) => void
 }
 
 export function VenueSearchPanel({
@@ -48,6 +53,10 @@ export function VenueSearchPanel({
   onEndDateChange,
   onRecommend,
   isRecommending,
+  trainingTitle,
+  onTrainingTitleChange,
+  trainersNeeded,
+  onTrainersNeededChange,
 }: VenueSearchPanelProps) {
   const { t } = useLanguage()
 
@@ -112,7 +121,19 @@ export function VenueSearchPanel({
         )}
       </div>
 
-      {/* ── Training dates ── */}
+      {/* ── Workshop title ── */}
+      <div>
+        <label className="mb-0.5 block text-[10px] text-muted">{t.map.trainingTitle}</label>
+        <input
+          type="text"
+          value={trainingTitle}
+          onChange={e => onTrainingTitleChange(e.target.value)}
+          placeholder={t.map.trainingTitle}
+          className="w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
+        />
+      </div>
+
+      {/* ── Training dates + trainers needed ── */}
       <div>
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
           Dates
@@ -137,6 +158,18 @@ export function VenueSearchPanel({
               onChange={e => onEndDateChange(e.target.value)}
               className="w-full cursor-pointer rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
               aria-label={t.map.endDate}
+            />
+          </div>
+          <div>
+            <label className="mb-0.5 block text-[10px] text-muted">{t.map.trainersNeeded}</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={trainersNeeded}
+              onChange={e => onTrainersNeededChange(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              className="w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
+              aria-label={t.map.trainersNeeded}
             />
           </div>
         </div>
