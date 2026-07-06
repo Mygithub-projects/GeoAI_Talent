@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ApproveModal } from './ApproveModal'
+import { AddUserModal } from './AddUserModal'
+import { UserRowActions } from './UserRowActions'
 
 interface Profile {
   user_id: string
@@ -71,9 +73,12 @@ export default async function AdminUsersPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-8 space-y-8">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-slate">{t.admin.usersTitle}</h1>
-          <p className="mt-1 text-sm text-muted">{t.admin.usersSubtitle}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl font-semibold text-slate">{t.admin.usersTitle}</h1>
+            <p className="mt-1 text-sm text-muted">{t.admin.usersSubtitle}</p>
+          </div>
+          <AddUserModal t={t} />
         </div>
 
         {/* MFA note */}
@@ -113,7 +118,10 @@ export default async function AdminUsersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <ApproveModal profile={p} t={t} />
+                        <div className="flex items-start gap-2">
+                          <ApproveModal profile={p} t={t} />
+                          <UserRowActions profile={p} t={t} isSelf={p.user_id === user.id} />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -163,7 +171,10 @@ export default async function AdminUsersPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <ApproveModal profile={p} t={t} isEdit />
+                          <div className="flex items-start gap-2">
+                            <ApproveModal profile={p} t={t} isEdit />
+                            <UserRowActions profile={p} t={t} isSelf={p.user_id === user.id} />
+                          </div>
                         </td>
                       </tr>
                     ))}

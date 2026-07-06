@@ -43,6 +43,11 @@ export interface Translations {
     passwordTooShort: string
     emailInvalid: string
     domainHint: string
+    districtLabel: string
+    districtPlaceholder: string
+    districtHint: string
+    statewideOption: string
+    districtRequiredError: string
   }
   approval: {
     title: string
@@ -176,6 +181,14 @@ export interface Translations {
     districtRequiredError: string
     mfaNote: string
     mfaInstructions: string
+    addUser: string
+    addUserModalTitle: string
+    addUserDescription: string
+    addUserButton: string
+    addUserSuccess: string
+    reactivate: string
+    deleteUser: string
+    deleteConfirm: string
   }
 }
 
@@ -225,6 +238,11 @@ export const en: Translations = {
     passwordTooShort: 'Password must be at least 8 characters.',
     emailInvalid: 'Please enter a valid email address.',
     domainHint: 'Use your official @moe.gov.my email, or contact an administrator.',
+    districtLabel: 'Your district',
+    districtPlaceholder: '— Select your district —',
+    districtHint: "Sets where your map view starts — you'll still be able to see every district.",
+    statewideOption: 'Statewide (start with the full map view)',
+    districtRequiredError: 'Please select your district.',
   },
   approval: {
     title: 'Account pending approval',
@@ -360,5 +378,13 @@ export const en: Translations = {
     mfaNote: 'Administrator MFA setup',
     mfaInstructions:
       'To enable MFA for admin accounts: go to Supabase Dashboard → Authentication → Policies and enable "Enforce MFA for admin users". Admins can then set up TOTP in their account settings.',
+    addUser: '+ Add user',
+    addUserModalTitle: 'Add new user',
+    addUserDescription: 'Creates the account immediately and emails an invite link where they set their own password.',
+    addUserButton: 'Send invite',
+    addUserSuccess: 'Invitation sent.',
+    reactivate: 'Reactivate',
+    deleteUser: 'Delete',
+    deleteConfirm: 'Permanently delete this account? This cannot be undone.',
   },
 }

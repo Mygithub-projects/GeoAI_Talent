@@ -46,6 +46,11 @@ export const bm: Translations = {
     passwordTooShort: 'Kata laluan mesti sekurang-kurangnya 8 aksara.',
     emailInvalid: 'Sila masukkan alamat emel yang sah.',
     domainHint: 'Gunakan emel rasmi @moe.gov.my anda, atau hubungi pentadbir.',
+    districtLabel: 'Daerah anda',
+    districtPlaceholder: '— Pilih daerah anda —',
+    districtHint: 'Menetapkan paparan permulaan peta anda — anda masih boleh melihat semua daerah.',
+    statewideOption: 'Seluruh negeri (mula dengan paparan penuh)',
+    districtRequiredError: 'Sila pilih daerah anda.',
   },
   approval: {
     title: 'Akaun menunggu kelulusan',
@@ -181,5 +186,13 @@ export const bm: Translations = {
     mfaNote: 'Persediaan MFA Pentadbir',
     mfaInstructions:
       'Untuk mendayakan MFA bagi akaun pentadbir: pergi ke Supabase Dashboard → Authentication → Policies dan dayakan "Enforce MFA for admin users". Pentadbir kemudian boleh menyediakan TOTP dalam tetapan akaun mereka.',
+    addUser: '+ Tambah pengguna',
+    addUserModalTitle: 'Tambah pengguna baharu',
+    addUserDescription: 'Mencipta akaun serta-merta dan menghantar emel jemputan untuk menetapkan kata laluan mereka sendiri.',
+    addUserButton: 'Hantar jemputan',
+    addUserSuccess: 'Jemputan telah dihantar.',
+    reactivate: 'Aktifkan semula',
+    deleteUser: 'Padam',
+    deleteConfirm: 'Padam akaun ini secara kekal? Tindakan ini tidak boleh dibatalkan.',
   },
 }

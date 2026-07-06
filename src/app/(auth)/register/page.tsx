@@ -6,6 +6,7 @@ import { useLanguage } from '@/i18n/LanguageProvider'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { STATEWIDE, PPD_DISTRICTS } from '@/lib/districts'
 
 export default function RegisterPage() {
   const { t } = useLanguage()
@@ -13,6 +14,7 @@ export default function RegisterPage() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm]   = useState('')
+  const [district, setDistrict] = useState('')
   const [status, setStatus]     = useState<{ type: 'error' | 'success'; message: string } | null>(null)
   const [loading, setLoading]   = useState(false)
 
@@ -29,13 +31,17 @@ export default function RegisterPage() {
       setStatus({ type: 'error', message: t.auth.passwordTooShort })
       return
     }
+    if (!district) {
+      setStatus({ type: 'error', message: t.auth.districtRequiredError })
+      return
+    }
 
     setLoading(true)
 
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, fullName }),
+      body: JSON.stringify({ email, password, fullName, ppd_district: district }),
     })
 
     const data = await res.json()
@@ -45,7 +51,7 @@ export default function RegisterPage() {
     } else {
       setStatus({ type: 'success', message: t.auth.checkEmail })
       // Clear form
-      setFullName(''); setEmail(''); setPassword(''); setConfirm('')
+      setFullName(''); setEmail(''); setPassword(''); setConfirm(''); setDistrict('')
     }
     setLoading(false)
   }
@@ -100,6 +106,24 @@ export default function RegisterPage() {
           value={confirm}
           onChange={e => setConfirm(e.target.value)}
         />
+
+        <div className="space-y-1.5">
+          <label htmlFor="register-district" className="text-sm font-medium text-slate">{t.auth.districtLabel}</label>
+          <select
+            id="register-district"
+            required
+            value={district}
+            onChange={e => setDistrict(e.target.value)}
+            className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue/30"
+          >
+            <option value="">{t.auth.districtPlaceholder}</option>
+            <option value={STATEWIDE}>{t.auth.statewideOption}</option>
+            {PPD_DISTRICTS.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted">{t.auth.districtHint}</p>
+        </div>
 
         <Button type="submit" loading={loading} className="w-full mt-2">
           {t.auth.register}

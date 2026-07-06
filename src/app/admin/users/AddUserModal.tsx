@@ -6,33 +6,27 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import type { Translations } from '@/i18n'
-import { approveUser, changeUserRole } from './actions'
+import { createUserByAdmin } from './actions'
 import { STATEWIDE, PPD_DISTRICTS } from '@/lib/districts'
 
-interface Profile {
-  user_id: string
-  full_name: string | null
-  email: string
-  role: 'admin' | 'user'
-  ppd_district: string | null
-  status: 'pending' | 'active' | 'suspended'
-}
-
 interface Props {
-  profile: Profile
   t: Translations
-  isEdit?: boolean
 }
 
-export function ApproveModal({ profile, t, isEdit = false }: Props) {
+export function AddUserModal({ t }: Props) {
   const router = useRouter()
   const [open, setOpen]         = useState(false)
-  const [fullName, setFullName] = useState(profile.full_name ?? '')
-  const [email, setEmail]       = useState(profile.email)
-  const [role, setRole]         = useState<'admin' | 'user'>(profile.role)
-  const [district, setDistrict] = useState(profile.ppd_district ?? '')
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail]       = useState('')
+  const [role, setRole]         = useState<'admin' | 'user'>('user')
+  const [district, setDistrict] = useState('')
   const [error, setError]       = useState('')
+  const [success, setSuccess]   = useState('')
   const [loading, setLoading]   = useState(false)
+
+  function reset() {
+    setFullName(''); setEmail(''); setRole('user'); setDistrict(''); setError(''); setSuccess('')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -44,14 +38,10 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
     }
 
     setLoading(true)
-
     try {
-      if (!isEdit || profile.status === 'pending') {
-        await approveUser(profile.user_id, fullName.trim(), email.toLowerCase().trim(), role, district || null)
-      } else {
-        await changeUserRole(profile.user_id, fullName.trim(), email.toLowerCase().trim(), role, district || null)
-      }
-      setOpen(false)
+      await createUserByAdmin(email.toLowerCase().trim(), fullName.trim(), role, district || null)
+      setSuccess(t.admin.addUserSuccess)
+      setFullName(''); setEmail(''); setRole('user'); setDistrict('')
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : t.common.error)
@@ -59,38 +49,36 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
     setLoading(false)
   }
 
-  const buttonLabel = isEdit && profile.status !== 'pending'
-    ? t.admin.changeRole
-    : t.admin.approve
-
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
-        {buttonLabel}
+      <Button onClick={() => setOpen(true)}>
+        {t.admin.addUser}
       </Button>
 
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate/50 backdrop-blur-sm"
-          onClick={e => { if (e.target === e.currentTarget) setOpen(false) }}
+          onClick={e => { if (e.target === e.currentTarget) { setOpen(false); reset() } }}
           role="dialog"
           aria-modal
-          aria-labelledby="approve-modal-title"
+          aria-labelledby="add-user-modal-title"
         >
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
             <div>
-              <h3 id="approve-modal-title" className="font-display text-lg font-semibold text-slate">
-                {t.admin.approveModal}
+              <h3 id="add-user-modal-title" className="font-display text-lg font-semibold text-slate">
+                {t.admin.addUserModalTitle}
               </h3>
-              <p className="text-xs text-muted">{t.admin.approveDescription}</p>
+              <p className="text-xs text-muted">{t.admin.addUserDescription}</p>
             </div>
 
             {error && <Alert variant="error" message={error} />}
+            {success && <Alert variant="success" message={success} />}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
                 label={t.auth.fullNameLabel}
                 type="text"
+                autoComplete="name"
                 required
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
@@ -98,6 +86,7 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
               <Input
                 label={t.auth.emailLabel}
                 type="email"
+                autoComplete="email"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -126,9 +115,9 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
 
               {/* District */}
               <div className="space-y-1.5">
-                <label htmlFor="approve-district" className="text-sm font-medium text-slate">{t.admin.districtLabel}</label>
+                <label htmlFor="add-user-district" className="text-sm font-medium text-slate">{t.admin.districtLabel}</label>
                 <select
-                  id="approve-district"
+                  id="add-user-district"
                   value={district}
                   onChange={e => setDistrict(e.target.value)}
                   className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue/30"
@@ -142,11 +131,11 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
               </div>
 
               <div className="flex gap-2 pt-1">
-                <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="flex-1">
+                <Button type="button" variant="ghost" onClick={() => { setOpen(false); reset() }} className="flex-1">
                   {t.common.cancel}
                 </Button>
                 <Button type="submit" loading={loading} className="flex-1">
-                  {t.common.confirm}
+                  {t.admin.addUserButton}
                 </Button>
               </div>
             </form>
