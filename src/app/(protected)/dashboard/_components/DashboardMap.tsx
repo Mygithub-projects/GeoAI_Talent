@@ -13,6 +13,11 @@ import { useLanguage } from '@/i18n/LanguageProvider'
 
 const DRILL_ZOOM = 10
 
+// Statewide default — same view every admin/state-officer sees, and where
+// "Zoom out" always returns to regardless of the signed-in user's own district.
+const SARAWAK_CENTER: [number, number] = [2.55, 113.8]
+const SARAWAK_ZOOM = 7
+
 function computeBounds(
   pts: Array<{ lat: number; lng: number }>,
   extra?: [number, number] | null,
@@ -32,20 +37,27 @@ interface SkillSubject {
 }
 
 interface DashboardMapProps {
-  skills:        SkillSubject[]
-  initialCenter: [number, number]
-  initialZoom:   number
+  skills:              SkillSubject[]
+  initialCenter:       [number, number]
+  initialZoom:         number
+  initialDistrictName: string | null
 }
 
 type HeatPoint = [number, number]
 
-export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMapProps) {
+export function DashboardMap({ skills, initialCenter, initialZoom, initialDistrictName }: DashboardMapProps) {
   const { t } = useLanguage()
+
+  // A district-defaulted user (initialZoom === DRILL_ZOOM) starts already "drilled
+  // down" into their own PPD — same centre/label a click on that PPD pin would set,
+  // so Mode A behaves identically for admin and non-admin, just with a different
+  // starting point. Admins/state officers get initialZoom = statewide, so this is null.
+  const startsDrilledDown = initialZoom >= DRILL_ZOOM
 
   // ── Shared state ──────────────────────────────────────────────
   const [appMode, setAppMode]         = useState<'A' | 'B'>('A')
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([])
-  const [centre, setCentre]           = useState<[number, number] | null>(null)
+  const [centre, setCentre]           = useState<[number, number] | null>(startsDrilledDown ? initialCenter : null)
   const [radiusKm, setRadiusKm]       = useState(50)
   const [dropPinMode, setDropPinMode] = useState(false)
   const [mapZoom, setMapZoom]         = useState(initialZoom)
@@ -55,8 +67,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
   const [heatPoints, setHeatPoints]   = useState<HeatPoint[]>([])
   const [pins, setPins]               = useState<TrainerPoint[]>([])
   const [ppds, setPPDs]               = useState<PPDPoint[]>([])
-  const [selectedPPDName, setSelectedPPDName] = useState<string | null>(null)
-  const [mapKey, setMapKey]           = useState(0)
+  const [selectedPPDName, setSelectedPPDName] = useState<string | null>(startsDrilledDown ? initialDistrictName : null)
 
   // ── Mode B state ──────────────────────────────────────────────
   const [venueSearch, setVenueSearch] = useState('')
@@ -323,9 +334,11 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
   // ── Mode switch ───────────────────────────────────────────────
   const handleSetAppMode = useCallback((newMode: 'A' | 'B') => {
     setAppMode(newMode)
-    setCentre(null)
+    // Mode A restores the district-default centre (same as on initial mount);
+    // Mode B always starts with no venue selected.
+    setCentre(newMode === 'A' && startsDrilledDown ? initialCenter : null)
     setDropPinMode(false)
-    setSelectedPPDName(null)
+    setSelectedPPDName(newMode === 'A' && startsDrilledDown ? initialDistrictName : null)
     setVenueName(null)
     setVenueSearch('')
     setSelectedItemIds([])
@@ -340,7 +353,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     setEngagementId(null)
     setSelectedTrainerIds(new Set())
     setReviewModalOpen(false)
-  }, [])
+  }, [startsDrilledDown, initialCenter, initialDistrictName])
 
   const appModeRef = useRef(appMode)
   useEffect(() => { appModeRef.current = appMode }, [appMode])
@@ -381,10 +394,13 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     }, () => { /* geolocation denied */ })
   }, [t.map.customLocation])
 
+  // Always returns to the true statewide view (not the caller's own district
+  // default) — "Zoom out" means the same thing for every user, admin or not.
   const handleZoomOut = useCallback(() => {
     setCentre(null)
     setSelectedPPDName(null)
-    setMapKey(k => k + 1)
+    flyKeyRef.current += 1
+    setFlyToTarget({ lat: SARAWAK_CENTER[0], lng: SARAWAK_CENTER[1], zoom: SARAWAK_ZOOM, key: flyKeyRef.current })
   }, [])
 
   // ── Mode B handlers ───────────────────────────────────────────
@@ -436,7 +452,6 @@ export function DashboardMap({ skills, initialCenter, initialZoom }: DashboardMa
     <div className="absolute inset-0">
       <div className="absolute inset-0">
         <MapCanvas
-          key={mapKey}
           mode={mapMode}
           appMode={appMode}
           heatPoints={heatPoints}

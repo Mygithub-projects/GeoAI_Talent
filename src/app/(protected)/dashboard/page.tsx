@@ -32,6 +32,7 @@ export default async function DashboardPage() {
   // Determine initial map view
   let initialCenter: [number, number] = SARAWAK_CENTER
   let initialZoom = SARAWAK_ZOOM
+  let initialDistrictName: string | null = null
 
   // Non-admin users with a specific district: zoom to their district centroid.
   // Statewide (state officer) users fall through to the statewide default, like admins.
@@ -44,6 +45,7 @@ export default async function DashboardPage() {
     if (centroid?.lat && centroid?.lng) {
       initialCenter = [centroid.lat, centroid.lng]
       initialZoom = DISTRICT_ZOOM
+      initialDistrictName = profile.ppd_district
     }
   }
 
@@ -52,6 +54,7 @@ export default async function DashboardPage() {
       skills={skills}
       initialCenter={initialCenter}
       initialZoom={initialZoom}
+      initialDistrictName={initialDistrictName}
     />
   )
 }

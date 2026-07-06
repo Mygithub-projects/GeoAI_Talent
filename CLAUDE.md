@@ -32,7 +32,11 @@ estimation and a human-approved invitation workflow.
   (geocode a place name / match registry / drop a map pin) → recommend within the radius.
 - **Single active language + translate function.** Stored EN/BM are the translation source for fixed
   content; free text translated on demand via `/api/translate`. Never show both languages at once.
-- **Security.** RLS enforced in the DB (district scope). Signed, single-use, expiring invitation tokens.
+- **Security.** RLS enforced in the DB: WRITE access to schools/master_trainers/trainer_skills/
+  trainer_roles is admin-only (`is_admin()`). READ access to that data is open to every active
+  authenticated user regardless of role or assigned district — `profiles.ppd_district` (including the
+  `STATEWIDE` sentinel) only selects the map's default camera position on login, it does not gate what
+  rows a query can return. Signed, single-use, expiring invitation tokens.
   Registration domain-restricted (@moe.gov.my) OR on the admin allowlist. Admin allowlist:
   wun@iegcampus.com, mich88lim@gmail.com, michelle.lim@gmail.com — auto-set to admin on sign-up.
   All other accounts start as role=user, status=pending. No self-promotion (role/status changes are

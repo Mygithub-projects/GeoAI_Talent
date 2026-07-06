@@ -7,13 +7,16 @@ import { Alert } from '@/components/ui/Alert'
 import type { Translations } from '@/i18n'
 import { approveUser, changeUserRole } from './actions'
 
-// Sentinel stored in profiles.ppd_district for non-admin users who should read
-// data across every district (e.g. a state-level officer) without being full admins.
-// Matched by the has_statewide_access() RLS helper, not by district equality.
+// Sentinel stored in profiles.ppd_district for non-admin users who should default
+// to a statewide map view (e.g. a state-level officer) without being full admins.
+// All active users can already read every district's data (see migration 020) —
+// this sentinel only picks the default camera position on login (dashboard/page.tsx),
+// it no longer gates row access.
 const STATEWIDE = 'STATEWIDE'
 
-// Must match master_trainers.ppd_district exactly (case-sensitive RLS equality check) —
-// these are the real district values from the ingested dataset, not administrative PPD-office groupings.
+// Must match master_trainers.ppd_district exactly (used by fn_district_centroid to
+// pick the default map view) — these are the real district values from the ingested
+// dataset, not administrative PPD-office groupings.
 const PPD_DISTRICTS = [
   'BARAM', 'BAU', 'BELAGA', 'BETONG', 'BINTULU', 'DALAT', 'DARO', 'JULAU',
   'KANOWIT', 'KAPIT', 'KUCHING', 'LAWAS', 'LIMBANG', 'LUBOK ANTU', 'LUNDU',
