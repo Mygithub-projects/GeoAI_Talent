@@ -65,14 +65,19 @@ export default async function AdminUsersPage() {
     <div className="min-h-screen bg-surface">
       {/* Top bar */}
       <header className="flex items-center justify-between border-b border-border bg-white px-6 py-3 shadow-sm">
-        <Image src="/logo_horizontal.svg" alt="GEO-TALENT AGENT" width={160} height={36} className="h-8 w-auto" />
+        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted">{currentProfile.full_name ?? user.email} · Admin</span>
+          <span className="text-sm text-muted">
+            {currentProfile.full_name ?? user.email}
+            <span className="ml-2 inline-flex items-center rounded-full bg-royal-blue/10 px-2 py-0.5 text-xs font-semibold text-royal-blue">
+              {t.common.adminBadge}
+            </span>
+          </span>
           <Link href="/dashboard" className="text-sm text-royal-blue hover:underline">{t.dashboard.title}</Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-8 space-y-8">
+      <main className="mx-auto max-w-5xl px-6 py-8 space-y-8 animate-fade-in">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-semibold text-slate">{t.admin.usersTitle}</h1>
@@ -95,7 +100,7 @@ export default async function AdminUsersPage() {
           {pending.length === 0 ? (
             <p className="text-sm text-muted">{t.admin.noPending}</p>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-border bg-white shadow-card">
+            <div className="overflow-hidden rounded-card border border-border bg-white shadow-card">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface text-xs text-muted">
@@ -137,7 +142,7 @@ export default async function AdminUsersPage() {
             {t.admin.allUsers} ({others.length})
           </h2>
           {others.length > 0 && (
-            <div className="overflow-hidden rounded-xl border border-border bg-white shadow-card">
+            <div className="overflow-hidden rounded-card border border-border bg-white shadow-card">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>

@@ -132,7 +132,7 @@ export function MapControls({
     <>
       {/* ── Mode A / B segmented toggle — top-centre ── */}
       <div className="pointer-events-auto absolute left-1/2 top-4 z-[1000] -translate-x-1/2">
-        <div className="flex rounded-full border border-border bg-white/95 p-0.5 shadow-card backdrop-blur-sm">
+        <div className="flex rounded-full border border-white/60 bg-white/90 p-0.5 shadow-float backdrop-blur-md">
           <button
             onClick={() => onSetAppMode('A')}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
@@ -161,7 +161,7 @@ export function MapControls({
       {/* ── Top-left ── */}
       <div className="pointer-events-auto absolute left-4 top-4 z-[1000]">
         {appMode === 'A' ? (
-          <div className="rounded-xl bg-white/95 shadow-card backdrop-blur-sm border border-border p-2 w-56">
+          <div className="rounded-xl bg-white/90 shadow-float backdrop-blur-md border border-white/60 p-2 w-56">
             <SkillCheckboxFilter
               skills={skills}
               selectedIds={selectedItemIds}
@@ -227,7 +227,7 @@ export function MapControls({
           onClick={onGeolocate}
           title={t.map.useMyLocation}
           aria-label={t.map.useMyLocation}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-white/95 text-muted shadow-card backdrop-blur-sm transition-colors hover:border-royal-blue hover:text-royal-blue"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/60 bg-white/90 text-muted shadow-float backdrop-blur-md transition-colors hover:border-royal-blue hover:text-royal-blue"
         >
           <LocationIcon />
         </button>
@@ -304,7 +304,7 @@ export function MapControls({
       {/* ── Bottom-right: radius slider (when centre is set) ── */}
       {centre && (
         <div className="pointer-events-auto absolute bottom-8 right-4 z-[1000]">
-          <div className="w-52 rounded-xl border border-border bg-white/95 p-3 shadow-card backdrop-blur-sm">
+          <div className="w-52 rounded-xl border border-white/60 bg-white/90 p-3 shadow-float backdrop-blur-md">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-medium text-slate">{t.map.radiusLabel}</span>
               <div className="flex items-center gap-1">

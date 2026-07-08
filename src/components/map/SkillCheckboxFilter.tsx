@@ -55,7 +55,7 @@ export function SkillCheckboxFilter({ skills, selectedIds, onChange }: SkillChec
             onClick={() => onChange([])}
             style={{ fontSize: 9, color: '#1E63C4', background: 'none', border: 'none', cursor: 'pointer', padding: '1px 4px' }}
           >
-            {locale === 'bm' ? 'Padam' : 'Clear'} ({selectedIds.length})
+            {t.map.clearCentre} ({selectedIds.length})
           </button>
         )}
       </div>

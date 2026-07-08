@@ -32,7 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           'focus:outline-none focus:ring-2 focus:ring-offset-0',
           error
             ? 'border-red-400 focus:ring-red-400'
-            : 'border-border focus:border-royal-blue focus:ring-royal-blue/30',
+            : 'border-border hover:border-muted/60 focus:border-royal-blue focus:ring-royal-blue/30',
           'disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface',
           className,
         ].join(' ')}

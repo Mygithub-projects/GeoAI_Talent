@@ -444,8 +444,11 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
     ? (centre ? pins.length : heatPoints.length)
     : (mapMode === 'heatmap' ? heatPoints.length : pins.length)
 
+  // Pin label shows only the venue name — geocoded venues carry the full
+  // comma-separated address, which is too long for the map tooltip. The
+  // full address stays visible in the venue chip in the search panel.
   const centreLabel = appMode === 'B'
-    ? venueName
+    ? (venueName ? venueName.split(',')[0].trim() : null)
     : (selectedPPDName ? `PPD ${selectedPPDName}` : null)
 
   return (

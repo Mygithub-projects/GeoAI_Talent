@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
       `https://nominatim.openstreetmap.org/search?${params}`,
       {
         headers: {
-          'User-Agent': 'GeoTalentAgent/1.0 (wun@iegcampus.com)',
+          'User-Agent': 'GeoAITalentAgent/1.0 (wun@iegcampus.com)',
           'Accept-Language': 'en',
         },
         signal: AbortSignal.timeout(6000),

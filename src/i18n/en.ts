@@ -13,8 +13,24 @@ export interface Translations {
     confirm: string
     back: string
     signOut: string
+    adminBadge: string
+    mainNavigation: string
+    toggleNav: string
+  }
+  landing: {
+    heroDescription: string
+    featureMap: string
+    featureMatching: string
+    featureCost: string
+    featureSecure: string
+    footerText: string
   }
   auth: {
+    heroBadge: string
+    heroTitle: string
+    chipTravel: string
+    chipBilingual: string
+    heroFooter: string
     loginTitle: string
     loginSubtitle: string
     registerTitle: string
@@ -84,12 +100,15 @@ export interface Translations {
     navSearch: string
     navEngagements: string
     navAdmin: string
+    navDatabase: string
+    navCalendar: string
     navSettings: string
     assistant: string
     collapseNav: string
     expandNav: string
     openAssistant: string
     closeAssistant: string
+    assistantComingSoon: string
     distributionView: string
     zoomOutOverview: string
     clickToExplore: string
@@ -138,10 +157,57 @@ export interface Translations {
     sendResultsTitle: string
     sendSuccessOne: string
     sendFailedOne: string
+    sentNoEmail: string
     retryFailed: string
     done: string
     invitedTrainersLabel: string
     refreshStatus: string
+  }
+  calendar: {
+    title: string
+    subtitle: string
+    today: string
+    prevMonth: string
+    nextMonth: string
+    trainerFilterPlaceholder: string
+    clearFilter: string
+    noEngagements: string
+    untitled: string
+    venueLabel: string
+    datesLabel: string
+    statusLabel: string
+    confirmedWord: string
+    trainersLabel: string
+    noTrainersYet: string
+    openBacklog: string
+    close: string
+    showDrafts: string
+    editWorkshop: string
+    titleFieldLabel: string
+    startLabel: string
+    endLabel: string
+    saving: string
+    datesLockedNote: string
+    cancelWorkshop: string
+    cancelConfirm: string
+    deleteDraft: string
+    deleteConfirm: string
+  }
+  adminDb: {
+    title: string
+    subtitle: string
+    searchPlaceholder: string
+    totalRows: string
+    addRow: string
+    editRow: string
+    deleteRow: string
+    deleteConfirm: string
+    actionsCol: string
+    noRows: string
+    save: string
+    savingLabel: string
+    prevPage: string
+    nextPage: string
   }
   invitationResponse: {
     acceptedTitle: string
@@ -190,11 +256,76 @@ export interface Translations {
     deleteUser: string
     deleteConfirm: string
   }
+  backlog: {
+    myEngagements: string
+    allActivity: string
+    subtitle: string
+    statAll: string
+    statusDraft: string
+    statusPendingInvite: string
+    statusConfirmed: string
+    statusDeclined: string
+    statusCancelled: string
+    tabWorkshops: string
+    tabAuditLog: string
+    searchPlaceholder: string
+    trainingFrom: string
+    toWord: string
+    shownOfTotal: string
+    clearAll: string
+    thRef: string
+    thWorkshopVenue: string
+    thDates: string
+    thProgress: string
+    thStatus: string
+    thBy: string
+    thWhen: string
+    thActions: string
+    thTrainer: string
+    thInvite: string
+    thInvited: string
+    thActor: string
+    thAction: string
+    thEntity: string
+    thDetails: string
+    untitled: string
+    noWorkshopsMatch: string
+    noTrainersInvited: string
+    noAuditEntries: string
+    cancelWorkshop: string
+    reinvite: string
+    confirm: string
+    withdraw: string
+    confirmTrainerPrompt: string
+    withdrawReasonPrompt: string
+    cancelWorkshopReasonPrompt: string
+    reinviteEmailNotDelivered: string
+    actionFailed: string
+    inviteAccepted: string
+    inviteDeclined: string
+    tokenExpired: string
+    awaiting: string
+    expAbbrev: string
+    auditTrainerPrefix: string
+    auditToPrefix: string
+    auditRolePrefix: string
+    auditStatusPrefix: string
+    auditScopePrefix: string
+    auditReasonPrefix: string
+    auditNotePrefix: string
+    auditViaPrefix: string
+    auditWasPrefix: string
+    justNow: string
+    minutesAgoSuffix: string
+    hoursAgoSuffix: string
+    daysAgoSuffix: string
+    footerNote: string
+  }
 }
 
 export const en: Translations = {
   common: {
-    appName: 'GEO-TALENT AGENT',
+    appName: 'GeoAI Talent Agent',
     tagline: 'Sarawak State Education Department · ICT Unit',
     language: 'Language',
     english: 'English',
@@ -207,12 +338,29 @@ export const en: Translations = {
     confirm: 'Confirm',
     back: 'Back',
     signOut: 'Sign out',
+    adminBadge: 'Admin',
+    mainNavigation: 'Main navigation',
+    toggleNav: 'Toggle navigation',
+  },
+  landing: {
+    heroDescription:
+      'Intelligently map teacher expertise across Sarawak and recommend the right Master Trainers for every training engagement.',
+    featureMap: 'Interactive map',
+    featureMatching: 'Smart matching',
+    featureCost: 'Cost estimates',
+    featureSecure: 'Secure & audited',
+    footerText: 'Jabatan Pendidikan Negeri Sarawak · PRESTIJ Programme',
   },
   auth: {
+    heroBadge: 'JPN Sarawak · ICT Unit',
+    heroTitle: 'Geospatial Master Trainer Recommendation Platform',
+    chipTravel: 'Travel estimates',
+    chipBilingual: 'Bilingual',
+    heroFooter: 'Ministry of Education Malaysia · Sarawak State Education Department',
     loginTitle: 'Welcome back',
     loginSubtitle: 'Sign in to your account to continue.',
     registerTitle: 'Create account',
-    registerSubtitle: 'Request access to the GEO-TALENT AGENT platform.',
+    registerSubtitle: 'Request access to the GeoAI Talent Agent platform.',
     forgotPassword: 'Forgot password?',
     resetPasswordTitle: 'Reset password',
     resetPasswordSubtitle: "Enter your email and we'll send you a reset link.",
@@ -254,7 +402,7 @@ export const en: Translations = {
   dashboard: {
     title: 'Dashboard',
     welcome: 'Welcome,',
-    subtitle: 'GEO-TALENT AGENT — Geospatial Master Trainer Recommendation Platform',
+    subtitle: 'GeoAI Talent Agent — Geospatial Master Trainer Recommendation Platform',
     comingSoon: 'The map dashboard will be available in the next phase.',
   },
   map: {
@@ -280,12 +428,15 @@ export const en: Translations = {
     navSearch: 'Search',
     navEngagements: 'Engagements',
     navAdmin: 'Admin',
+    navDatabase: 'Database',
+    navCalendar: 'Calendar',
     navSettings: 'Settings',
     assistant: 'Assistant',
     collapseNav: 'Collapse',
     expandNav: 'Expand',
     openAssistant: 'Open assistant',
     closeAssistant: 'Close assistant',
+    assistantComingSoon: 'Your AI assistant will be available in an upcoming phase.',
     distributionView: 'Distribution view',
     zoomOutOverview: 'Zoom out for overview',
     clickToExplore: 'Select a PPD district pin to explore trainers nearby',
@@ -334,10 +485,57 @@ export const en: Translations = {
     sendResultsTitle: 'Send results',
     sendSuccessOne: 'Sent',
     sendFailedOne: 'Failed',
+    sentNoEmail: 'Invitation recorded — email was NOT delivered (no email provider configured)',
     retryFailed: 'Retry failed',
     done: 'Done',
     invitedTrainersLabel: 'Invited trainers',
     refreshStatus: 'Refresh',
+  },
+  calendar: {
+    title: 'Workshop calendar',
+    subtitle: 'All scheduled workshops at a glance — confirmed dates lock a trainer out of overlapping searches automatically.',
+    today: 'Today',
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    trainerFilterPlaceholder: 'Filter by trainer name…',
+    clearFilter: 'Clear',
+    noEngagements: 'No workshops in this month.',
+    untitled: 'Untitled workshop',
+    venueLabel: 'Venue',
+    datesLabel: 'Dates',
+    statusLabel: 'Status',
+    confirmedWord: 'confirmed',
+    trainersLabel: 'Invited trainers',
+    noTrainersYet: 'No trainers invited yet.',
+    openBacklog: 'Open in Engagements',
+    close: 'Close',
+    showDrafts: 'Show drafts',
+    editWorkshop: 'Edit workshop',
+    titleFieldLabel: 'Workshop title',
+    startLabel: 'Start date',
+    endLabel: 'End date',
+    saving: 'Saving…',
+    datesLockedNote: 'Dates are locked once invitations have been sent — trainers accepted these dates. Cancel and re-invite to reschedule.',
+    cancelWorkshop: 'Cancel workshop',
+    cancelConfirm: 'Cancel this workshop? All outstanding invitation links will be invalidated. This keeps the history but cannot be re-opened.',
+    deleteDraft: 'Delete draft',
+    deleteConfirm: 'Permanently delete this draft workshop? Nothing was sent to trainers. This cannot be undone.',
+  },
+  adminDb: {
+    title: 'Database console',
+    subtitle: 'View, add, edit or remove reference data directly. Changes are live and audited — engagement and account records are managed on their own pages.',
+    searchPlaceholder: 'Search',
+    totalRows: 'Total rows',
+    addRow: 'Add row',
+    editRow: 'Edit',
+    deleteRow: 'Delete',
+    deleteConfirm: 'Delete this row permanently? This cannot be undone.',
+    actionsCol: 'Actions',
+    noRows: 'No rows found.',
+    save: 'Save',
+    savingLabel: 'Saving…',
+    prevPage: 'Prev',
+    nextPage: 'Next',
   },
   invitationResponse: {
     acceptedTitle: 'Invitation accepted',
@@ -386,5 +584,70 @@ export const en: Translations = {
     reactivate: 'Reactivate',
     deleteUser: 'Delete',
     deleteConfirm: 'Permanently delete this account? This cannot be undone.',
+  },
+  backlog: {
+    myEngagements: 'My Engagements',
+    allActivity: 'All Activity',
+    subtitle: 'Workshops, trainer invitations, and audit trail.',
+    statAll: 'All',
+    statusDraft: 'Draft',
+    statusPendingInvite: 'Pending Invite',
+    statusConfirmed: 'Confirmed',
+    statusDeclined: 'Declined',
+    statusCancelled: 'Cancelled',
+    tabWorkshops: 'Workshops',
+    tabAuditLog: 'Audit Log',
+    searchPlaceholder: 'Search trainer, title, venue…',
+    trainingFrom: 'Training from',
+    toWord: 'to',
+    shownOfTotal: '{shown} of {total} shown',
+    clearAll: 'Clear all',
+    thRef: 'Ref',
+    thWorkshopVenue: 'Workshop / Venue',
+    thDates: 'Dates',
+    thProgress: 'Progress',
+    thStatus: 'Status',
+    thBy: 'By',
+    thWhen: 'When',
+    thActions: 'Actions',
+    thTrainer: 'Trainer',
+    thInvite: 'Invite',
+    thInvited: 'Invited',
+    thActor: 'Actor',
+    thAction: 'Action',
+    thEntity: 'Entity',
+    thDetails: 'Details',
+    untitled: 'Untitled',
+    noWorkshopsMatch: 'No workshops match your filters.',
+    noTrainersInvited: 'No trainers invited yet.',
+    noAuditEntries: 'No audit log entries yet.',
+    cancelWorkshop: 'Cancel workshop',
+    reinvite: 'Re-invite',
+    confirm: 'Confirm',
+    withdraw: 'Withdraw',
+    confirmTrainerPrompt: 'Mark this trainer as Confirmed? This records an off-system confirmation.',
+    withdrawReasonPrompt: 'Reason for withdrawing this invite (optional):',
+    cancelWorkshopReasonPrompt: 'Reason for cancelling this workshop (optional):',
+    reinviteEmailNotDelivered: 'Re-invited, but email NOT delivered',
+    actionFailed: 'Failed',
+    inviteAccepted: 'Accepted',
+    inviteDeclined: 'Declined',
+    tokenExpired: 'Token expired',
+    awaiting: 'Awaiting',
+    expAbbrev: 'exp.',
+    auditTrainerPrefix: 'Trainer:',
+    auditToPrefix: 'To:',
+    auditRolePrefix: 'Role →',
+    auditStatusPrefix: 'Status →',
+    auditScopePrefix: 'Scope:',
+    auditReasonPrefix: 'Reason:',
+    auditNotePrefix: 'Note:',
+    auditViaPrefix: 'Via:',
+    auditWasPrefix: 'Was:',
+    justNow: 'just now',
+    minutesAgoSuffix: 'm ago',
+    hoursAgoSuffix: 'h ago',
+    daysAgoSuffix: 'd ago',
+    footerNote: 'Showing up to 200 workshops and 100 audit log entries · Sorted newest first',
   },
 }

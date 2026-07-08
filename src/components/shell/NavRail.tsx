@@ -51,6 +51,22 @@ function ShieldIcon() {
   )
 }
 
+function CalendarGridIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z" />
+    </svg>
+  )
+}
+
+function DatabaseIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 5.625c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+    </svg>
+  )
+}
+
 function SettingsIcon() {
   return (
     <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
@@ -79,14 +95,16 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
     { href: '/dashboard',   label: t.map.navDashboard,    icon: <MapIcon />,      adminOnly: false, badge: 0 },
     { href: '/search',      label: t.map.navSearch,       icon: <SearchIcon />,   adminOnly: false, badge: 0 },
     { href: '/engagements', label: t.map.navEngagements,  icon: <CalendarIcon />, adminOnly: false, badge: 0 },
-    { href: '/admin/users', label: t.map.navAdmin,        icon: <ShieldIcon />,   adminOnly: true,  badge: pendingCount },
+    { href: '/calendar',    label: t.map.navCalendar,     icon: <CalendarGridIcon />, adminOnly: false, badge: 0 },
+    { href: '/admin/users',    label: t.map.navAdmin,     icon: <ShieldIcon />,   adminOnly: true,  badge: pendingCount },
+    { href: '/admin/database', label: t.map.navDatabase,  icon: <DatabaseIcon />, adminOnly: true,  badge: 0 },
   ]
 
   return (
     <nav
-      aria-label="Main navigation"
+      aria-label={t.common.mainNavigation}
       className={`
-        flex flex-col bg-ink-navy text-white flex-shrink-0 transition-all duration-200
+        flex flex-col bg-rail-gradient text-white flex-shrink-0 transition-all duration-200
         ${expanded ? 'w-56' : 'w-16'}
       `}
     >
@@ -95,7 +113,7 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
         <div className="relative flex-shrink-0">
           <Image
             src={expanded ? '/logo_horizontal.svg' : '/logo_icon.svg'}
-            alt="GEO-TALENT"
+            alt="GeoAI Talent Agent"
             width={expanded ? 120 : 28}
             height={28}
             className="h-7 w-auto object-left"
@@ -119,12 +137,18 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
                   relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
                   transition-colors duration-150
                   ${isActive
-                    ? 'bg-white/15 text-white'
+                    ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.08)]'
                     : 'text-white/70 hover:bg-white/10 hover:text-white'
                   }
                   ${!expanded ? 'justify-center' : ''}
                 `}
               >
+                {isActive && (
+                  <span
+                    className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-teal"
+                    aria-hidden
+                  />
+                )}
                 <span className="relative flex-shrink-0">
                   {item.icon}
                   {item.badge > 0 && (

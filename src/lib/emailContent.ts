@@ -118,7 +118,7 @@ export function buildInvitationEmail(p: InvitationEmailParams): { subject: strin
               Jabatan Pendidikan Negeri Sarawak
             </p>
             <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0;letter-spacing:.5px;">
-              GEO-TALENT AGENT
+              GeoAI Talent Agent
             </h1>
           </td>
         </tr>

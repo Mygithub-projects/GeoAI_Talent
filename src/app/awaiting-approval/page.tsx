@@ -22,7 +22,7 @@ export default function AwaitingApprovalPage() {
     <div className="flex min-h-screen flex-col bg-surface">
       {/* Top bar */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
-        <Image src="/logo_horizontal.svg" alt="GEO-TALENT AGENT" width={160} height={36} className="h-8 w-auto" />
+        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
         <LanguageToggle />
       </div>
 

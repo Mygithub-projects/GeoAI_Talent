@@ -28,7 +28,7 @@ export default async function LandingPage() {
   const t = getTranslations(locale)
 
   return (
-    <div className="flex min-h-screen flex-col bg-ink-navy">
+    <div className="flex min-h-screen flex-col bg-hero-gradient">
       {/* Decorative background */}
       <div
         className="pointer-events-none fixed inset-0 opacity-30"
@@ -37,12 +37,13 @@ export default async function LandingPage() {
             'radial-gradient(ellipse at 20% 50%, #1E63C4 0%, transparent 55%), radial-gradient(ellipse at 80% 10%, #12B5AC 0%, transparent 45%)',
         }}
       />
+      <div className="geo-pattern pointer-events-none fixed inset-0" />
 
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-8 py-5">
         <Image
           src="/logo_dark.svg"
-          alt="GEO-TALENT AGENT"
+          alt="GeoAI Talent Agent"
           width={180}
           height={44}
           priority
@@ -66,21 +67,22 @@ export default async function LandingPage() {
               {t.common.appName}
             </h1>
             <p className="text-lg text-white/70 leading-relaxed">
-              {locale === 'bm'
-                ? 'Petakan kepakaran guru secara pintar merentasi Sarawak dan cadangkan Jurulatih Utama yang tepat untuk setiap penglibatan latihan.'
-                : 'Intelligently map teacher expertise across Sarawak and recommend the right Master Trainers for every training engagement.'}
+              {t.landing.heroDescription}
             </p>
           </div>
 
           {/* Feature grid */}
           <div className="grid grid-cols-2 gap-3 text-left sm:grid-cols-4">
             {[
-              { icon: '🗺️', label: locale === 'bm' ? 'Peta interaktif' : 'Interactive map' },
-              { icon: '🎯', label: locale === 'bm' ? 'Padanan pintar' : 'Smart matching' },
-              { icon: '✈️', label: locale === 'bm' ? 'Anggaran kos' : 'Cost estimates' },
-              { icon: '🔒', label: locale === 'bm' ? 'Keselamatan data' : 'Secure & audited' },
-            ].map(f => (
-              <div key={f.label} className="rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+              { icon: '🗺️', label: t.landing.featureMap },
+              { icon: '🎯', label: t.landing.featureMatching },
+              { icon: '✈️', label: t.landing.featureCost },
+              { icon: '🔒', label: t.landing.featureSecure },
+            ].map((f, i) => (
+              <div
+                key={f.label}
+                className={`animate-fade-up stagger-${i + 1} rounded-xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur-sm transition-colors hover:border-teal/40 hover:bg-white/15`}
+              >
                 <span className="text-lg">{f.icon}</span>
                 <p className="mt-1 text-xs font-medium text-white/80">{f.label}</p>
               </div>
@@ -107,7 +109,7 @@ export default async function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 py-6 text-center text-xs text-white/30">
-        © {new Date().getFullYear()} Jabatan Pendidikan Negeri Sarawak · PRESTIJ Programme
+        © {new Date().getFullYear()} {t.landing.footerText}
       </footer>
     </div>
   )

@@ -54,15 +54,18 @@ export function AssistantDrawer({ open, onClose }: AssistantDrawerProps) {
           </div>
 
           <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal/10">
+            <div
+              className="flex h-14 w-14 items-center justify-center rounded-full"
+              style={{ background: 'var(--gradient-teal-sheen)' }}
+            >
               <SparklesIcon />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate">
+              <p className="font-display text-sm font-semibold text-slate">
                 {t.map.assistant}
               </p>
-              <p className="mt-1 text-xs text-muted">
-                Available in Phase 4
+              <p className="mt-1.5 max-w-[14rem] text-xs leading-relaxed text-muted">
+                {t.map.assistantComingSoon}
               </p>
             </div>
           </div>

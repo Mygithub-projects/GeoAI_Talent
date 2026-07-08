@@ -2,7 +2,7 @@
 
 /* ── Brand design tokens ────────────────────────────────────── */
 @theme {
-  /* Colour palette */
+  /* Colour palette — core brand */
   --color-ink-navy:   #0E2F57;
   --color-royal-blue: #1E63C4;
   --color-teal:       #12B5AC;
@@ -11,6 +11,22 @@
   --color-muted:      #6B7A90;
   --color-surface:    #F6F8FB;
   --color-border:     #E2E8F0;
+
+  /* Tint scales (light-mode) */
+  --color-navy-50:   #EEF3F9;
+  --color-navy-100:  #D9E4F1;
+  --color-navy-700:  #0B2646;
+  --color-navy-800:  #081D36;
+  --color-blue-50:   #EDF4FD;
+  --color-blue-100:  #D7E6FA;
+  --color-blue-500:  #2D74D9;
+  --color-blue-600:  #1E63C4;
+  --color-blue-700:  #1852A3;
+  --color-teal-50:   #E9FAF8;
+  --color-teal-100:  #C9F2EE;
+  --color-teal-600:  #0E9C94;
+  --color-amber-50:  #FEF5E7;
+  --color-amber-100: #FDE8C8;
 
   /* Typography — CSS variables injected by next/font/google */
   --font-display: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", sans-serif;
@@ -21,9 +37,20 @@
   --radius-card: 14px;
   --radius-pill: 9999px;
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-  --shadow-card-hover: 0 4px 12px 0 rgb(0 0 0 / 0.12), 0 2px 4px -1px rgb(0 0 0 / 0.08);
+  /* Shadows — layered, soft */
+  --shadow-card:
+    0 1px 2px 0 rgb(14 47 87 / 0.05),
+    0 2px 8px -1px rgb(14 47 87 / 0.07);
+  --shadow-card-hover:
+    0 2px 4px -1px rgb(14 47 87 / 0.07),
+    0 8px 20px -4px rgb(14 47 87 / 0.14);
+  --shadow-float:
+    0 1px 2px 0 rgb(14 47 87 / 0.06),
+    0 10px 30px -6px rgb(14 47 87 / 0.18);
+  --shadow-modal:
+    0 4px 12px -2px rgb(14 47 87 / 0.10),
+    0 24px 60px -12px rgb(14 47 87 / 0.28);
+  --shadow-glow-blue: 0 0 0 4px rgb(30 99 196 / 0.14);
 }
 
 /* ── Base styles ─────────────────────────────────────────────── */
@@ -31,6 +58,12 @@
   color-scheme: light;
   background-color: var(--color-surface);
   color: var(--color-slate);
+
+  /* Gradient tokens (non-Tailwind custom properties) */
+  --gradient-hero: linear-gradient(135deg, #0E2F57 0%, #143E74 45%, #1E63C4 100%);
+  --gradient-rail: linear-gradient(180deg, #0E2F57 0%, #0B2646 100%);
+  --gradient-cta:  linear-gradient(135deg, #1E63C4 0%, #2D74D9 100%);
+  --gradient-teal-sheen: linear-gradient(135deg, rgb(18 181 172 / 0.14), rgb(30 99 196 / 0.10));
 }
 
 html {
@@ -49,6 +82,7 @@ html {
 :focus-visible {
   outline: 2px solid var(--color-royal-blue);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* ── Motion preferences ──────────────────────────────────────── */
@@ -60,12 +94,75 @@ html {
   }
 }
 
-/* ── Page fade-in ─────────────────────────────────────────────── */
+/* ── Keyframes ───────────────────────────────────────────────── */
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── Utility classes ─────────────────────────────────────────── */
 .animate-fade-in {
   animation: fadeSlideIn 0.3s ease-out forwards;
+}
+
+.animate-fade-up {
+  animation: fadeSlideUp 0.45s ease-out both;
+}
+
+/* Stagger helpers for card grids */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.12s; }
+.stagger-3 { animation-delay: 0.19s; }
+.stagger-4 { animation-delay: 0.26s; }
+
+/* Translucent glass surface — top bar, floating map panels */
+.glass {
+  background: rgb(255 255 255 / 0.82);
+  backdrop-filter: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  box-shadow: var(--shadow-float);
+}
+
+/* Card hover lift */
+.card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Brand gradient backgrounds */
+.bg-hero-gradient { background-image: var(--gradient-hero); }
+.bg-rail-gradient { background-image: var(--gradient-rail); }
+.bg-cta-gradient  { background-image: var(--gradient-cta); }
+
+/* Subtle geo dot-grid overlay for branded hero surfaces */
+.geo-pattern {
+  background-image: radial-gradient(rgb(255 255 255 / 0.10) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-border) 25%,
+    #EDF1F6 50%,
+    var(--color-border) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 8px;
 }

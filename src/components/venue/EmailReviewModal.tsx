@@ -14,6 +14,7 @@ export interface SentResult {
   trainer_id: string
   trainer_name: string
   email_sent_to: string | null
+  email_delivered: boolean
   token_expires_at: string
 }
 export interface SkippedResult {
@@ -229,8 +230,10 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
               </h3>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, marginBottom: 14 }}>
                 {results.sent.map(r => (
-                  <li key={r.trainer_id} style={{ fontSize: 12, color: '#0F766E', padding: '4px 0' }}>
-                    ✓ {r.trainer_name} — {t.batchInvite.sendSuccessOne}
+                  <li key={r.trainer_id} style={{ fontSize: 12, color: r.email_delivered ? '#0F766E' : '#92400E', padding: '4px 0' }}>
+                    {r.email_delivered
+                      ? <>✓ {r.trainer_name} — {t.batchInvite.sendSuccessOne}</>
+                      : <>⚠ {r.trainer_name} — {t.batchInvite.sentNoEmail}</>}
                   </li>
                 ))}
                 {results.skipped.map(r => (

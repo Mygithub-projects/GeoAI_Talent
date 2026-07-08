@@ -68,7 +68,7 @@ export function VenueSearchPanel({
     !isRecommending
 
   return (
-    <div className="rounded-xl bg-white/95 shadow-card backdrop-blur-sm border border-border p-3 w-64 flex flex-col gap-3">
+    <div className="rounded-xl bg-white/90 shadow-float backdrop-blur-md border border-white/60 p-3 w-64 flex flex-col gap-3">
 
       {/* ── Venue ── */}
       <div>

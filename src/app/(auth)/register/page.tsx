@@ -77,7 +77,7 @@ export default function RegisterPage() {
           required
           value={fullName}
           onChange={e => setFullName(e.target.value)}
-          placeholder="Nama penuh / Full name"
+          placeholder={t.auth.fullNameLabel}
         />
         <Input
           label={t.auth.emailLabel}

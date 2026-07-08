@@ -14,6 +14,7 @@ interface SentResult {
   trainer_id: string
   trainer_name: string
   email_sent_to: string | null
+  email_delivered: boolean
   token_expires_at: string
 }
 interface SkippedResult {
@@ -106,7 +107,9 @@ export async function POST(req: NextRequest) {
   }
 
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
-  const testInbox = process.env.TEST_INBOX_EMAIL
+  // `|| undefined` so a blank TEST_INBOX_EMAIL= line falls back to the
+  // trainer's own email ('' is not nullish, so ?? alone would keep it)
+  const testInbox = process.env.TEST_INBOX_EMAIL || undefined
   const venueName = await resolveVenueName(admin, engagement)
   const trainingTitle = engagement.training_title ?? 'Program Latihan'
 
@@ -159,9 +162,11 @@ export async function POST(req: NextRequest) {
     })
 
     const toEmail = testInbox ?? trainer.email ?? null
+    let emailDelivered = false
     if (toEmail) {
       try {
-        await sendEmail({ to: toEmail, subject: mergedSubject, html: mergedHtml })
+        // console fallback = nothing actually delivered
+        emailDelivered = (await sendEmail({ to: toEmail, subject: mergedSubject, html: mergedHtml })) !== 'console'
       } catch (emailErr) {
         console.error('[invite] email send error', trainer.trainer_id, emailErr)
         // Do NOT roll back — tokens are issued, log it and continue
@@ -179,6 +184,7 @@ export async function POST(req: NextRequest) {
         trainer_id:       trainer.trainer_id,
         trainer_name:     trainer.trainer_name,
         email_sent_to:    toEmail,
+        email_delivered:  emailDelivered,
         token_expires_at: expiresAt.toISOString(),
         actor_name:       profile?.full_name,
       },
@@ -188,6 +194,7 @@ export async function POST(req: NextRequest) {
       trainer_id:       trainer.trainer_id,
       trainer_name:     trainer.trainer_name,
       email_sent_to:    toEmail,
+      email_delivered:  emailDelivered,
       token_expires_at: expiresAt.toISOString(),
     })
   }))

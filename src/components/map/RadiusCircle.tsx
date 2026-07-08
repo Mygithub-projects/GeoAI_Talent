@@ -34,7 +34,7 @@ export function RadiusCircle({ centre, radiusKm, ppdName }: RadiusCircleProps) {
       {pinIcon && (
         <Marker position={centre} icon={pinIcon}>
           {ppdName && (
-            <Tooltip permanent direction="top" offset={[0, -52]} opacity={0.95}>
+            <Tooltip direction="top" offset={[0, -52]} opacity={0.95}>
               <span style={{
                 fontSize: 11, fontWeight: 700, color: '#0E2F57',
                 fontFamily: "'Inter', system-ui, sans-serif",

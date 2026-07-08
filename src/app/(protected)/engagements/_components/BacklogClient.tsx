@@ -2,6 +2,8 @@
 
 import { useState, useMemo, Fragment } from 'react'
 import Link from 'next/link'
+import { useLanguage } from '@/i18n/LanguageProvider'
+import type { Translations } from '@/i18n/en'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -57,14 +59,42 @@ function fmtDateTime(iso: string): string {
   })
 }
 
-function relTime(iso: string): string {
+interface RelTimeSuffixes {
+  justNow: string
+  minutes: string
+  hours:   string
+  days:    string
+}
+
+function relTimeSuffixes(t: Translations): RelTimeSuffixes {
+  return {
+    justNow: t.backlog.justNow,
+    minutes: t.backlog.minutesAgoSuffix,
+    hours:   t.backlog.hoursAgoSuffix,
+    days:    t.backlog.daysAgoSuffix,
+  }
+}
+
+function relTime(iso: string, s: RelTimeSuffixes): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1)   return 'just now'
-  if (mins < 60)  return `${mins}m ago`
+  if (mins < 1)   return s.justNow
+  if (mins < 60)  return `${mins}${s.minutes}`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24)   return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
+  if (hrs < 24)   return `${hrs}${s.hours}`
+  return `${Math.floor(hrs / 24)}${s.days}`
+}
+
+// Maps raw workflow/invite status DATA values to translated display labels.
+function statusLabel(status: string, t: Translations): string {
+  switch (status) {
+    case 'Draft':          return t.backlog.statusDraft
+    case 'Pending Invite': return t.backlog.statusPendingInvite
+    case 'Confirmed':      return t.backlog.statusConfirmed
+    case 'Declined':       return t.backlog.statusDeclined
+    case 'Cancelled':      return t.backlog.statusCancelled
+    default:               return status
+  }
 }
 
 // Mirrors src/lib/engagementRollup.ts recomputeEngagementStatus, for optimistic UI only.
@@ -87,7 +117,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
   'Cancelled':      { bg: '#E2E8F0', text: '#64748B', dot: '#94A3B8' },
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: Translations }) {
   const s = STATUS_STYLES[status] ?? STATUS_STYLES['Draft']
   return (
     <span style={{
@@ -97,7 +127,7 @@ function StatusBadge({ status }: { status: string }) {
       padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap',
     }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: s.dot, flexShrink: 0 }} />
-      {status}
+      {statusLabel(status, t)}
     </span>
   )
 }
@@ -141,39 +171,39 @@ function ActionChip({ action }: { action: string }) {
   )
 }
 
-function TrainerInviteStatusCell({ row }: { row: TrainerInviteRow }) {
+function TrainerInviteStatusCell({ row, t }: { row: TrainerInviteRow; t: Translations }) {
   if (row.status === 'Confirmed')
-    return <span style={{ fontSize: 11, color: '#0F766E', fontWeight: 700 }}>✓ Accepted</span>
+    return <span style={{ fontSize: 11, color: '#0F766E', fontWeight: 700 }}>✓ {t.backlog.inviteAccepted}</span>
   if (row.status === 'Declined')
-    return <span style={{ fontSize: 11, color: '#B91C1C', fontWeight: 700 }}>✗ Declined</span>
+    return <span style={{ fontSize: 11, color: '#B91C1C', fontWeight: 700 }}>✗ {t.backlog.inviteDeclined}</span>
   if (!row.invite_expires_at)
     return <span style={{ color: '#94A3B8' }}>—</span>
   const expired = new Date(row.invite_expires_at) < new Date()
   if (expired)
-    return <span style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>Token expired</span>
+    return <span style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>{t.backlog.tokenExpired}</span>
   return (
     <span style={{ fontSize: 11, color: '#92400E' }}>
-      ⏳ Awaiting<br />
+      ⏳ {t.backlog.awaiting}<br />
       <span style={{ fontSize: 10, color: '#94A3B8' }}>
-        exp. {fmtDate(row.invite_expires_at.split('T')[0])}
+        {t.backlog.expAbbrev} {fmtDate(row.invite_expires_at.split('T')[0])}
       </span>
     </span>
   )
 }
 
-function AuditDetail({ row }: { row: AuditRow }) {
+function AuditDetail({ row, t }: { row: AuditRow; t: Translations }) {
   const p = row.payload_json
   if (!p) return <span style={{ color: '#94A3B8' }}>—</span>
   const parts: string[] = []
-  if (typeof p.trainer_name    === 'string') parts.push(`Trainer: ${p.trainer_name}`)
-  if (typeof p.email_sent_to   === 'string') parts.push(`To: ${p.email_sent_to}`)
-  if (typeof p.role            === 'string') parts.push(`Role → ${p.role}`)
-  if (typeof p.status          === 'string') parts.push(`Status → ${p.status}`)
-  if (typeof p.scope           === 'string') parts.push(`Scope: ${p.scope}`)
-  if (typeof p.reason          === 'string') parts.push(`Reason: ${p.reason}`)
-  if (typeof p.note            === 'string') parts.push(`Note: ${p.note}`)
-  if (typeof p.method          === 'string') parts.push(`Via: ${p.method}`)
-  if (typeof p.previous_status === 'string') parts.push(`Was: ${p.previous_status}`)
+  if (typeof p.trainer_name    === 'string') parts.push(`${t.backlog.auditTrainerPrefix} ${p.trainer_name}`)
+  if (typeof p.email_sent_to   === 'string') parts.push(`${t.backlog.auditToPrefix} ${p.email_sent_to}`)
+  if (typeof p.role            === 'string') parts.push(`${t.backlog.auditRolePrefix} ${p.role}`)
+  if (typeof p.status          === 'string') parts.push(`${t.backlog.auditStatusPrefix} ${p.status}`)
+  if (typeof p.scope           === 'string') parts.push(`${t.backlog.auditScopePrefix} ${p.scope}`)
+  if (typeof p.reason          === 'string') parts.push(`${t.backlog.auditReasonPrefix} ${p.reason}`)
+  if (typeof p.note            === 'string') parts.push(`${t.backlog.auditNotePrefix} ${p.note}`)
+  if (typeof p.method          === 'string') parts.push(`${t.backlog.auditViaPrefix} ${p.method}`)
+  if (typeof p.previous_status === 'string') parts.push(`${t.backlog.auditWasPrefix} ${p.previous_status}`)
   if (parts.length === 0) {
     Object.keys(p).slice(0, 2).forEach(k => parts.push(`${k}: ${String(p[k]).slice(0, 40)}`))
   }
@@ -257,20 +287,33 @@ interface WorkshopsTableProps {
   onConfirm:         (engId: string, trainerId: string) => void
   onCancelTrainer:   (engId: string, trainerId: string) => void
   onCancelWorkshop:  (engId: string) => void
+  t:                 Translations
 }
 
 function WorkshopsTable({
-  rows, expanded, onToggleExpand, rowAction, rowError, onReinvite, onConfirm, onCancelTrainer, onCancelWorkshop,
+  rows, expanded, onToggleExpand, rowAction, rowError, onReinvite, onConfirm, onCancelTrainer, onCancelWorkshop, t,
 }: WorkshopsTableProps) {
+  const rel = relTimeSuffixes(t)
+
   if (rows.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 24px', color: '#94A3B8', fontSize: 14 }}>
-        No workshops match your filters.
+        {t.backlog.noWorkshopsMatch}
       </div>
     )
   }
 
-  const HEADERS = ['', 'REF', 'WORKSHOP / VENUE', 'DATES', 'PROGRESS', 'STATUS', 'BY', 'WHEN', 'ACTIONS']
+  const HEADERS = [
+    '',
+    t.backlog.thRef,
+    t.backlog.thWorkshopVenue,
+    t.backlog.thDates,
+    t.backlog.thProgress,
+    t.backlog.thStatus,
+    t.backlog.thBy,
+    t.backlog.thWhen,
+    t.backlog.thActions,
+  ]
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -311,7 +354,7 @@ function WorkshopsTable({
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top', maxWidth: 200 }}>
                     <p style={{ margin: 0, fontWeight: 600, color: '#0E2F57', lineHeight: 1.3 }}>
-                      {w.training_title ?? <em style={{ fontWeight: 400, color: '#94A3B8' }}>Untitled</em>}
+                      {w.training_title ?? <em style={{ fontWeight: 400, color: '#94A3B8' }}>{t.backlog.untitled}</em>}
                     </p>
                     {w.dynamic_venue_name && (
                       <p style={{ margin: '2px 0 0', fontSize: 11, color: '#64748B' }}>
@@ -333,18 +376,18 @@ function WorkshopsTable({
                     <ProgressCell confirmedCount={w.confirmedCount} trainersNeeded={w.trainers_needed} />
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top' }}>
-                    <StatusBadge status={w.workflow_status} />
+                    <StatusBadge status={w.workflow_status} t={t} />
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                     <span style={{ color: '#475569' }}>{w.creator_name ?? '—'}</span>
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                    <span style={{ color: '#94A3B8', fontSize: 11 }}>{relTime(w.created_at)}</span><br />
+                    <span style={{ color: '#94A3B8', fontSize: 11 }}>{relTime(w.created_at, rel)}</span><br />
                     <span style={{ color: '#CBD5E1', fontSize: 10 }}>{fmtDateTime(w.created_at).split(',')[0]}</span>
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top' }} onClick={e => e.stopPropagation()}>
                     {workshopCancellable ? (
-                      <ActionBtn label="Cancel workshop" variant="red"
+                      <ActionBtn label={t.backlog.cancelWorkshop} variant="red"
                         loading={wBusy === 'cancel'} disabled={!!wBusy}
                         onClick={() => onCancelWorkshop(w.engagement_id)} />
                     ) : (
@@ -357,12 +400,12 @@ function WorkshopsTable({
                   <tr key={`${w.engagement_id}-detail`} style={{ borderBottom: '1px solid #F1F5F9', background: '#F8FAFC' }}>
                     <td colSpan={HEADERS.length} style={{ padding: '4px 14px 14px 42px' }}>
                       {w.trainers.length === 0 ? (
-                        <p style={{ fontSize: 12, color: '#94A3B8', margin: '8px 0' }}>No trainers invited yet.</p>
+                        <p style={{ fontSize: 12, color: '#94A3B8', margin: '8px 0' }}>{t.backlog.noTrainersInvited}</p>
                       ) : (
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                           <thead>
                             <tr>
-                              {['TRAINER', 'STATUS', 'INVITE', 'INVITED', 'ACTIONS'].map(h => (
+                              {[t.backlog.thTrainer, t.backlog.thStatus, t.backlog.thInvite, t.backlog.thInvited, t.backlog.thActions].map(h => (
                                 <th key={h} style={{
                                   padding: '6px 10px', textAlign: 'left',
                                   fontSize: 9, fontWeight: 700, color: '#94A3B8',
@@ -386,28 +429,28 @@ function WorkshopsTable({
                                     )}
                                   </td>
                                   <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
-                                    <StatusBadge status={tr.status} />
+                                    <StatusBadge status={tr.status} t={t} />
                                   </td>
                                   <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
-                                    <TrainerInviteStatusCell row={tr} />
+                                    <TrainerInviteStatusCell row={tr} t={t} />
                                   </td>
                                   <td style={{ padding: '8px 10px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                                    <span style={{ color: '#94A3B8', fontSize: 11 }}>{relTime(tr.invited_at)}</span>
+                                    <span style={{ color: '#94A3B8', fontSize: 11 }}>{relTime(tr.invited_at, rel)}</span>
                                   </td>
                                   <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                       {isPending && (
-                                        <ActionBtn label="Re-invite" variant="amber"
+                                        <ActionBtn label={t.backlog.reinvite} variant="amber"
                                           loading={busy === 'reinvite'} disabled={!!busy}
                                           onClick={() => onReinvite(w.engagement_id, tr.trainer_id)} />
                                       )}
                                       {isPending && (
-                                        <ActionBtn label="✓ Confirm" variant="teal"
+                                        <ActionBtn label={`✓ ${t.backlog.confirm}`} variant="teal"
                                           loading={busy === 'confirm'} disabled={!!busy}
                                           onClick={() => onConfirm(w.engagement_id, tr.trainer_id)} />
                                       )}
                                       {isPending && (
-                                        <ActionBtn label="Withdraw" variant="red"
+                                        <ActionBtn label={t.backlog.withdraw} variant="red"
                                           loading={busy === 'cancel'} disabled={!!busy}
                                           onClick={() => onCancelTrainer(w.engagement_id, tr.trainer_id)} />
                                       )}
@@ -437,11 +480,13 @@ function WorkshopsTable({
 
 // ── Audit table ───────────────────────────────────────────────────
 
-function AuditTable({ rows }: { rows: AuditRow[] }) {
+function AuditTable({ rows, t }: { rows: AuditRow[]; t: Translations }) {
+  const rel = relTimeSuffixes(t)
+
   if (rows.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '48px 24px', color: '#94A3B8', fontSize: 14 }}>
-        No audit log entries yet.
+        {t.backlog.noAuditEntries}
       </div>
     )
   }
@@ -450,7 +495,7 @@ function AuditTable({ rows }: { rows: AuditRow[] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr style={{ background: '#F8FAFC', borderBottom: '2px solid #E2E8F0' }}>
-            {['WHEN', 'ACTOR', 'ACTION', 'ENTITY', 'DETAILS'].map(h => (
+            {[t.backlog.thWhen, t.backlog.thActor, t.backlog.thAction, t.backlog.thEntity, t.backlog.thDetails].map(h => (
               <th key={h} style={{
                 padding: '10px 14px', textAlign: 'left',
                 fontSize: 10, fontWeight: 700, color: '#94A3B8',
@@ -466,7 +511,7 @@ function AuditTable({ rows }: { rows: AuditRow[] }) {
             >
               <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                 <span style={{ color: '#334155', fontSize: 11 }}>{fmtDateTime(row.created_at)}</span><br />
-                <span style={{ color: '#94A3B8', fontSize: 10 }}>{relTime(row.created_at)}</span>
+                <span style={{ color: '#94A3B8', fontSize: 10 }}>{relTime(row.created_at, rel)}</span>
               </td>
               <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 600, color: '#0E2F57' }}>{row.actor_name}</span>
@@ -487,7 +532,7 @@ function AuditTable({ rows }: { rows: AuditRow[] }) {
                 ) : <span style={{ color: '#94A3B8' }}>—</span>}
               </td>
               <td style={{ padding: '10px 14px', verticalAlign: 'top', maxWidth: 280 }}>
-                <AuditDetail row={row} />
+                <AuditDetail row={row} t={t} />
               </td>
             </tr>
           ))}
@@ -507,6 +552,7 @@ interface BacklogClientProps {
 }
 
 export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, scope }: BacklogClientProps) {
+  const { t } = useLanguage()
   const [tab, setTab]             = useState<'engagements' | 'audit'>('engagements')
   const [statusFilter, setStatusFilter] = useState<string | null>(null)
   const [searchQuery, setSearchQuery]   = useState('')
@@ -544,7 +590,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? 'Failed')
+      if (!res.ok) throw new Error(data?.error ?? t.backlog.actionFailed)
       onSuccess(data)
     } catch (e) {
       setRowError(s => ({ ...s, [key]: (e as Error).message.slice(0, 60) }))
@@ -570,18 +616,21 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
   function handleReinvite(engId: string, trainerId: string) {
     callAction(`trn:${engId}:${trainerId}`, '/api/engagements/reinvite', { engagement_id: engId, trainer_id: trainerId }, (data) => {
       updateTrainer(engId, trainerId, { invite_expires_at: data.token_expires_at as string, responded_at: null })
+      if (data.email_delivered === false) {
+        setRowError(s => ({ ...s, [`trn:${engId}:${trainerId}`]: t.backlog.reinviteEmailNotDelivered }))
+      }
     })
   }
 
   function handleConfirm(engId: string, trainerId: string) {
-    if (!window.confirm('Mark this trainer as Confirmed? This records an off-system confirmation.')) return
+    if (!window.confirm(t.backlog.confirmTrainerPrompt)) return
     callAction(`trn:${engId}:${trainerId}`, '/api/engagements/confirm', { engagement_id: engId, trainer_id: trainerId }, () => {
       updateTrainer(engId, trainerId, { status: 'Confirmed', responded_at: new Date().toISOString() })
     })
   }
 
   function handleCancelTrainer(engId: string, trainerId: string) {
-    const reason = window.prompt('Reason for withdrawing this invite (optional):')
+    const reason = window.prompt(t.backlog.withdrawReasonPrompt)
     if (reason === null) return
     callAction(`trn:${engId}:${trainerId}`, '/api/engagements/cancel', { engagement_id: engId, trainer_id: trainerId, reason: reason || undefined }, () => {
       updateTrainer(engId, trainerId, { status: 'Declined', responded_at: new Date().toISOString() })
@@ -589,7 +638,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
   }
 
   function handleCancelWorkshop(engId: string) {
-    const reason = window.prompt('Reason for cancelling this workshop (optional):')
+    const reason = window.prompt(t.backlog.cancelWorkshopReasonPrompt)
     if (reason === null) return
     callAction(`eng:${engId}`, '/api/engagements/cancel', { engagement_id: engId, reason: reason || undefined }, () => {
       setRows(s => s.map(w => w.engagement_id !== engId ? w : { ...w, workflow_status: 'Cancelled' }))
@@ -621,11 +670,11 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
   const flatTrainers = useMemo(() => rows.flatMap(w => w.trainers), [rows])
 
   const STAT_CHIPS = [
-    { label: 'All',            status: null,             bg: '#EFF6FF', color: '#1E63C4', value: rows.length },
-    { label: 'Draft',          status: 'Draft',          bg: '#F1F5F9', color: '#475569', value: rows.filter(w => w.workflow_status === 'Draft').length },
-    { label: 'Pending Invite', status: 'Pending Invite', bg: '#FEF3C7', color: '#92400E', value: flatTrainers.filter(t => t.status === 'Pending Invite').length },
-    { label: 'Confirmed',      status: 'Confirmed',      bg: '#CCFBF1', color: '#0F766E', value: flatTrainers.filter(t => t.status === 'Confirmed').length },
-    { label: 'Declined',       status: 'Declined',       bg: '#FEE2E2', color: '#B91C1C', value: flatTrainers.filter(t => t.status === 'Declined').length },
+    { label: t.backlog.statAll,           status: null,             bg: '#EFF6FF', color: '#1E63C4', value: rows.length },
+    { label: t.backlog.statusDraft,       status: 'Draft',          bg: '#F1F5F9', color: '#475569', value: rows.filter(w => w.workflow_status === 'Draft').length },
+    { label: t.backlog.statusPendingInvite, status: 'Pending Invite', bg: '#FEF3C7', color: '#92400E', value: flatTrainers.filter(tr => tr.status === 'Pending Invite').length },
+    { label: t.backlog.statusConfirmed,   status: 'Confirmed',      bg: '#CCFBF1', color: '#0F766E', value: flatTrainers.filter(tr => tr.status === 'Confirmed').length },
+    { label: t.backlog.statusDeclined,    status: 'Declined',       bg: '#FEE2E2', color: '#B91C1C', value: flatTrainers.filter(tr => tr.status === 'Declined').length },
   ]
 
   const hasFilters = !!searchQuery || !!dateFrom || !!dateTo || !!statusFilter
@@ -637,13 +686,13 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
       <div style={{ background: '#0E2F57', padding: '20px 28px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, letterSpacing: '1.5px', textTransform: 'uppercase', margin: '0 0 4px' }}>
-            GEO-TALENT AGENT{isAdmin ? ' · Admin' : ''}
+            {t.common.appName}{isAdmin ? ` · ${t.common.adminBadge}` : ''}
           </p>
           <h1 style={{ color: '#ffffff', fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '0.3px' }}>
-            {scope === 'mine' ? 'My Engagements' : 'All Activity'}
+            {scope === 'mine' ? t.backlog.myEngagements : t.backlog.allActivity}
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: '4px 0 0' }}>
-            Workshops, trainer invitations, and audit trail.
+            {t.backlog.subtitle}
           </p>
         </div>
 
@@ -660,7 +709,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
                   color: scope === s ? '#0E2F57' : 'rgba(255,255,255,0.7)',
                 }}
               >
-                {s === 'all' ? 'All Activity' : 'My Engagements'}
+                {s === 'all' ? t.backlog.allActivity : t.backlog.myEngagements}
               </Link>
             ))}
           </div>
@@ -683,21 +732,21 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
         {/* ── Tabs ── */}
         <div style={{ display: 'flex', borderBottom: '2px solid #E2E8F0' }}>
           {[
-            { key: 'engagements', label: `Workshops (${rows.length})` },
-            { key: 'audit',       label: `Audit Log (${auditLog.length})` },
-          ].map(t => (
-            <button key={t.key}
-              onClick={() => { setTab(t.key as 'engagements' | 'audit'); setStatusFilter(null) }}
+            { key: 'engagements', label: `${t.backlog.tabWorkshops} (${rows.length})` },
+            { key: 'audit',       label: `${t.backlog.tabAuditLog} (${auditLog.length})` },
+          ].map(tabDef => (
+            <button key={tabDef.key}
+              onClick={() => { setTab(tabDef.key as 'engagements' | 'audit'); setStatusFilter(null) }}
               style={{
                 padding: '10px 20px', fontSize: 13, fontWeight: 600,
                 border: 'none', background: 'transparent',
-                borderBottom: tab === t.key ? '2px solid #1E63C4' : '2px solid transparent',
+                borderBottom: tab === tabDef.key ? '2px solid #1E63C4' : '2px solid transparent',
                 marginBottom: -2,
-                color: tab === t.key ? '#1E63C4' : '#64748B',
+                color: tab === tabDef.key ? '#1E63C4' : '#64748B',
                 cursor: 'pointer', transition: 'color 0.15s',
               }}
             >
-              {t.label}
+              {tabDef.label}
             </button>
           ))}
         </div>
@@ -717,7 +766,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
               </svg>
               <input
-                type="text" placeholder="Search trainer, title, venue…"
+                type="text" placeholder={t.backlog.searchPlaceholder}
                 value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%', paddingLeft: 30, paddingRight: 10,
@@ -732,14 +781,14 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
 
             {/* Date range */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 11, color: '#94A3B8', whiteSpace: 'nowrap' }}>Training from</span>
+              <span style={{ fontSize: 11, color: '#94A3B8', whiteSpace: 'nowrap' }}>{t.backlog.trainingFrom}</span>
               <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
                 style={{
                   border: '1px solid #E2E8F0', borderRadius: 8,
                   fontSize: 12, color: '#334155', padding: '6px 8px',
                   background: '#F8FAFC', outline: 'none',
                 }} />
-              <span style={{ fontSize: 11, color: '#94A3B8' }}>to</span>
+              <span style={{ fontSize: 11, color: '#94A3B8' }}>{t.backlog.toWord}</span>
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                 style={{
                   border: '1px solid #E2E8F0', borderRadius: 8,
@@ -752,7 +801,9 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
             {hasFilters && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
                 <span style={{ fontSize: 12, color: '#1E63C4', fontWeight: 600 }}>
-                  {filteredRows.length} of {rows.length} shown
+                  {t.backlog.shownOfTotal
+                    .replace('{shown}', String(filteredRows.length))
+                    .replace('{total}', String(rows.length))}
                 </span>
                 <button onClick={() => { setSearchQuery(''); setDateFrom(''); setDateTo(''); setStatusFilter(null) }}
                   style={{
@@ -760,7 +811,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
                     background: '#F1F5F9', border: '1px solid #E2E8F0',
                     borderRadius: 6, padding: '4px 10px', cursor: 'pointer',
                   }}>
-                  × Clear all
+                  × {t.backlog.clearAll}
                 </button>
               </div>
             )}
@@ -784,13 +835,14 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
                 onConfirm={handleConfirm}
                 onCancelTrainer={handleCancelTrainer}
                 onCancelWorkshop={handleCancelWorkshop}
+                t={t}
               />
-            : <AuditTable rows={auditLog} />
+            : <AuditTable rows={auditLog} t={t} />
           }
         </div>
 
         <p style={{ fontSize: 11, color: '#CBD5E1', textAlign: 'center', margin: 0 }}>
-          Showing up to 200 workshops and 100 audit log entries · Sorted newest first
+          {t.backlog.footerNote}
         </p>
       </div>
     </div>

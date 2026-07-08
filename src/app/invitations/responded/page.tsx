@@ -36,7 +36,7 @@ function ResponseContent() {
     <div className="flex min-h-screen flex-col bg-surface">
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
         <Link href="/" className="inline-block">
-          <Image src="/logo_horizontal.svg" alt="GEO-TALENT AGENT" width={160} height={36} className="h-8 w-auto cursor-pointer" />
+          <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto cursor-pointer" />
         </Link>
         <LanguageToggle />
       </div>

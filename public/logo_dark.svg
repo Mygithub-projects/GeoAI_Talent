@@ -22,6 +22,6 @@
 <circle cx="60" cy="50" r="5.4" fill="#FFFFFF"/>
 <circle cx="60" cy="50" r="2.4" fill="#1E63C4"/>
 </g>
-<text x="150" y="78" font-size="46" font-weight="bold" fill="#FFFFFF" letter-spacing="0.5">GEO-TALENT <tspan fill="#12B5AC">AGENT</tspan></text>
+<text x="150" y="78" font-size="46" font-weight="bold" fill="#FFFFFF" letter-spacing="0.5">GeoAI <tspan fill="#12B5AC">Talent Agent</tspan></text>
 <text x="152" y="108" font-size="15.5" font-weight="bold" fill="#9DB0C7" letter-spacing="4">GEOSPATIAL  TALENT  INTELLIGENCE</text>
 </svg>

@@ -108,12 +108,17 @@ export async function POST(req: NextRequest) {
     expiresAt,
   })
 
-  const testInbox = process.env.TEST_INBOX_EMAIL
+  // `|| undefined` so a blank TEST_INBOX_EMAIL= line falls back to the
+  // trainer's own email ('' is not nullish, so ?? alone would keep it)
+  const testInbox = process.env.TEST_INBOX_EMAIL || undefined
   const toEmail   = testInbox ?? (trainer.email as string | null) ?? null
 
+  let emailDelivered = false
   if (toEmail) {
-    try { await sendEmail({ to: toEmail, subject, html }) }
-    catch (e) { console.error('[reinvite] email error', e) }
+    try {
+      // console fallback = nothing actually delivered
+      emailDelivered = (await sendEmail({ to: toEmail, subject, html })) !== 'console'
+    } catch (e) { console.error('[reinvite] email error', e) }
   }
 
   await admin.from('audit_logs').insert({
@@ -125,6 +130,7 @@ export async function POST(req: NextRequest) {
       trainer_id:       trainer.trainer_id,
       trainer_name:     trainer.trainer_name,
       email_sent_to:    toEmail,
+      email_delivered:  emailDelivered,
       token_expires_at: expiresAt.toISOString(),
       actor_name:       profile?.full_name,
     },
@@ -134,6 +140,7 @@ export async function POST(req: NextRequest) {
     success:          true,
     trainer_name:     trainer.trainer_name,
     email_sent_to:    toEmail,
+    email_delivered:  emailDelivered,
     token_expires_at: expiresAt.toISOString(),
   })
 }

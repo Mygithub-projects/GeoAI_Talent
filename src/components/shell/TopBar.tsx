@@ -34,11 +34,11 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
   const displayName = userName?.split(' ')[0] ?? ''
 
   return (
-    <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-border bg-white px-4 shadow-sm z-30">
+    <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-border/70 bg-white/85 px-4 backdrop-blur-md z-30 shadow-[0_1px_2px_0_rgb(14_47_87_/_0.05)]">
       {/* Nav toggle (mobile / collapsed state) */}
       <button
         onClick={onToggleNav}
-        aria-label="Toggle navigation"
+        aria-label={t.common.toggleNav}
         className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-slate transition-colors"
       >
         <HamburgerIcon />
@@ -52,10 +52,10 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
 
       {/* User name + role badge */}
       <div className="hidden sm:flex items-center gap-2 text-sm">
-        <span className="text-muted">{displayName}</span>
+        <span className="font-medium text-slate">{displayName}</span>
         {userRole === 'admin' && (
-          <span className="inline-flex items-center rounded-full bg-royal-blue/10 px-2 py-0.5 text-xs font-medium text-royal-blue">
-            Admin
+          <span className="inline-flex items-center rounded-full bg-royal-blue/10 px-2 py-0.5 text-xs font-semibold text-royal-blue">
+            {t.common.adminBadge}
           </span>
         )}
       </div>
@@ -73,10 +73,10 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
         onClick={onToggleAssistant}
         aria-label={assistantOpen ? t.map.closeAssistant : t.map.openAssistant}
         title={assistantOpen ? t.map.closeAssistant : t.map.openAssistant}
-        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
           assistantOpen
-            ? 'bg-teal text-white'
-            : 'bg-surface text-muted hover:bg-teal/10 hover:text-teal border border-border'
+            ? 'bg-teal text-white shadow-sm'
+            : 'bg-surface text-muted hover:bg-teal/10 hover:text-teal-600 border border-border'
         }`}
       >
         <SparklesIcon />

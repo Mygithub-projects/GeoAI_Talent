@@ -26,7 +26,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'GEO-TALENT AGENT | JPN Sarawak',
+  title: 'GeoAI Talent Agent | JPN Sarawak',
   description: 'Geospatial Master Trainer Recommendation Platform — Jabatan Pendidikan Negeri Sarawak',
   icons: { icon: '/logo_icon.svg' },
 }
