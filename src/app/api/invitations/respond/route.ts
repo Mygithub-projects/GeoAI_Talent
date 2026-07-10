@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifySignedToken, hashToken } from '@/lib/tokenSigning'
 import { recomputeEngagementStatus } from '@/lib/engagementRollup'
+import { sendEmail, resolveVenueName } from '@/lib/email'
+import { buildResponseAckEmail } from '@/lib/emailContent'
 
 // Public — hit directly by a trainer clicking an accept/decline link
 // in their invitation email. No app session exists, so every read/
@@ -64,9 +66,37 @@ export async function GET(req: NextRequest) {
 
   const { data: trainer } = await admin
     .from('master_trainers')
-    .select('trainer_name')
+    .select('trainer_name, email')
     .eq('trainer_id', tokenRow.trainer_id)
     .single()
+
+  const { data: engagement } = await admin
+    .from('training_engagements')
+    .select('created_by, training_title, dynamic_venue_name, venue_school_code, start_date, end_date')
+    .eq('engagement_id', tokenRow.engagement_id)
+    .single()
+
+  // Acknowledgment email back to the trainer confirming what was recorded —
+  // a pure receipt, no links or login prompt. Best-effort: a send failure
+  // must never break the trainer's response flow.
+  let ackTransport: string | null = null
+  try {
+    if (trainer?.email && engagement) {
+      const venueName = await resolveVenueName(admin, engagement)
+      const { subject, html } = buildResponseAckEmail({
+        lang:          'bm',  // invitations go out in BM; the acknowledgment matches
+        trainerName:   trainer.trainer_name ?? '',
+        accepted:      tokenRow.action_scope === 'accept',
+        trainingTitle: engagement.training_title ?? 'TBC',
+        venueName,
+        startDate:     engagement.start_date,
+        endDate:       engagement.end_date,
+      })
+      ackTransport = await sendEmail({ to: trainer.email, subject, html })
+    }
+  } catch (err) {
+    console.error('[respond] acknowledgment email failed:', err)
+  }
 
   await admin.from('audit_logs').insert({
     actor:        null,
@@ -74,11 +104,36 @@ export async function GET(req: NextRequest) {
     entity_type:  'training_engagement',
     entity_id:    tokenRow.engagement_id,
     payload_json: {
-      trainer_id:   tokenRow.trainer_id,
-      trainer_name: trainer?.trainer_name ?? null,
-      action:       tokenRow.action_scope,
+      trainer_id:         tokenRow.trainer_id,
+      trainer_name:       trainer?.trainer_name ?? null,
+      action:             tokenRow.action_scope,
+      ack_email_sent_to:  trainer?.email ?? null,
+      ack_email_delivered: ackTransport !== null && ackTransport !== 'console',
     },
   })
+
+  // In-app notification for the engagement's coordinator (Phase 7): so they
+  // see trainer responses without refreshing /engagements. Best-effort —
+  // a failure here must never break the trainer's response flow.
+  try {
+    if (engagement?.created_by) {
+      const trainerName = trainer?.trainer_name ?? 'A trainer'
+      const workshop    = engagement.training_title ?? null
+      const accepted    = tokenRow.action_scope === 'accept'
+      await admin.from('notifications').insert({
+        user_id: engagement.created_by,
+        type:    accepted ? 'trainer_accepted' : 'trainer_declined',
+        message_en: accepted
+          ? `${trainerName} accepted the invitation${workshop ? ` for "${workshop}"` : ''}.`
+          : `${trainerName} declined the invitation${workshop ? ` for "${workshop}"` : ''}.`,
+        message_bm: accepted
+          ? `${trainerName} menerima jemputan${workshop ? ` untuk "${workshop}"` : ''}.`
+          : `${trainerName} menolak jemputan${workshop ? ` untuk "${workshop}"` : ''}.`,
+      })
+    }
+  } catch (err) {
+    console.error('[respond] notification insert failed:', err)
+  }
 
   return redirectTo(tokenRow.action_scope === 'accept' ? 'accepted' : 'declined')
 }

@@ -28,6 +28,13 @@ interface CalendarClientProps {
   isAdmin: boolean
 }
 
+// Per-trainer outcome of a reschedule, from /api/engagements/update
+interface RescheduleResultRow {
+  trainer_id:      string
+  trainer_name:    string
+  email_delivered: boolean
+}
+
 export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   const { t, locale } = useLanguage()
   const jsLocale = locale === 'bm' ? 'ms-MY' : 'en-MY'
@@ -50,26 +57,47 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   const [editEnd, setEditEnd]       = useState('')
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [rescheduleResult, setRescheduleResult] = useState<RescheduleResultRow[] | null>(null)
 
-  const fetchMonth = useCallback(async (y: number, m: number) => {
-    setLoading(true)
+  const fetchMonth = useCallback(async (y: number, m: number, opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setLoading(true)
     setError(null)
     try {
       const res = await fetch(`/api/calendar?year=${y}&month=${m}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? 'Failed to load calendar')
-      setEngagements(data.engagements ?? [])
+      const list: CalendarEngagement[] = data.engagements ?? []
+      setEngagements(list)
+      // Keep an open details modal in sync (trainer statuses, workflow
+      // pill); if the workshop left this month's window, keep the old copy
+      setSelected(prev => prev ? (list.find(x => x.engagement_id === prev.engagement_id) ?? prev) : prev)
     } catch (e) {
-      setError((e as Error).message)
-      setEngagements([])
+      // A failed background refresh keeps the last good grid on screen
+      if (!opts?.silent) {
+        setError((e as Error).message)
+        setEngagements([])
+      }
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-month-change effect, not derived state
     fetchMonth(year, month)
+  }, [year, month, fetchMonth])
+
+  // Silent refresh every 60s and on window focus (same pattern as the
+  // NotificationBell) — trainer accepts/declines happen out-of-band via
+  // email links, so an open calendar goes stale without this.
+  useEffect(() => {
+    const tick = () => { void fetchMonth(year, month, { silent: true }) }
+    const interval = setInterval(tick, 60_000)
+    window.addEventListener('focus', tick)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('focus', tick)
+    }
   }, [year, month, fetchMonth])
 
   function shiftMonth(delta: number) {
@@ -96,9 +124,11 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
     setSelected(null)
     setEditing(false)
     setActionError(null)
+    setRescheduleResult(null)
   }
 
-  async function postAction(url: string, body: object): Promise<boolean> {
+  // Returns the parsed response body on success, null on failure
+  async function postAction(url: string, body: object): Promise<Record<string, unknown> | null> {
     setActionBusy(true)
     setActionError(null)
     try {
@@ -109,10 +139,10 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? 'Action failed')
-      return true
+      return data as Record<string, unknown>
     } catch (e) {
       setActionError((e as Error).message)
-      return false
+      return null
     } finally {
       setActionBusy(false)
     }
@@ -121,16 +151,29 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   async function handleSaveEdit() {
     if (!selected) return
     const isDraft = selected.workflow_status === 'Draft'
+    const datesChanged = editStart !== selected.start_date || editEnd !== selected.end_date
     const body: Record<string, unknown> = {
       engagement_id:      selected.engagement_id,
       training_title:     editTitle,
       dynamic_venue_name: editVenue,
+      start_date:         editStart,
+      end_date:           editEnd,
     }
-    if (isDraft) {
-      body.start_date = editStart
-      body.end_date   = editEnd
+    if (!isDraft && datesChanged) {
+      // Rescheduling resets accepted trainers and re-sends invitations
+      if (!window.confirm(t.calendar.rescheduleConfirm)) return
+      body.confirm_reschedule = true
     }
-    if (await postAction('/api/engagements/update', body)) {
+    const data = await postAction('/api/engagements/update', body)
+    if (!data) return
+    const reschedule = data.reschedule as { affected: RescheduleResultRow[] } | undefined
+    if (reschedule) {
+      // Keep the modal open to show per-trainer send results;
+      // refresh the grid behind it so the new dates appear at once
+      setRescheduleResult(reschedule.affected)
+      setEditing(false)
+      fetchMonth(year, month)
+    } else {
       closeDetails()
       fetchMonth(year, month)
     }
@@ -352,7 +395,32 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
               </h2>
             </div>
             <div style={{ padding: 20, fontSize: 13, color: '#15233A' }}>
-              {editing ? (
+              {rescheduleResult ? (
+                <>
+                  <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#0E2F57' }}>
+                    {t.calendar.rescheduleResultTitle}
+                  </p>
+                  {rescheduleResult.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: 12, color: '#94A3B8' }}>{t.calendar.rescheduleNoTrainers}</p>
+                  ) : (
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                      {rescheduleResult.map(r => (
+                        <li key={r.trainer_id} style={{ fontSize: 12, padding: '4px 0', color: r.email_delivered ? '#0F766E' : '#92400E' }}>
+                          {r.email_delivered
+                            ? <>✓ {r.trainer_name} — {t.calendar.rescheduleEmailOk}</>
+                            : <>⚠ {r.trainer_name} — {t.calendar.rescheduleEmailFailed}</>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+                    <button onClick={closeDetails}
+                      style={{ fontSize: 12, fontWeight: 700, color: 'white', background: '#0E2F57', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}>
+                      {t.calendar.close}
+                    </button>
+                  </div>
+                </>
+              ) : editing ? (
                 <>
                   <div style={{ marginBottom: 12 }}>
                     <label style={labelStyle}>{t.calendar.titleFieldLabel}</label>
@@ -365,15 +433,15 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
                   <div style={{ display: 'flex', gap: 10, marginBottom: 6 }}>
                     <div style={{ flex: 1 }}>
                       <label style={labelStyle}>{t.calendar.startLabel}</label>
-                      <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)} disabled={!selectedIsDraft} style={{ ...inputStyle, opacity: selectedIsDraft ? 1 : 0.55 }} />
+                      <input type="date" value={editStart} onChange={e => setEditStart(e.target.value)} style={inputStyle} />
                     </div>
                     <div style={{ flex: 1 }}>
                       <label style={labelStyle}>{t.calendar.endLabel}</label>
-                      <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)} disabled={!selectedIsDraft} style={{ ...inputStyle, opacity: selectedIsDraft ? 1 : 0.55 }} />
+                      <input type="date" value={editEnd} onChange={e => setEditEnd(e.target.value)} style={inputStyle} />
                     </div>
                   </div>
                   {!selectedIsDraft && (
-                    <p style={{ fontSize: 10, color: '#92400E', margin: '0 0 10px' }}>{t.calendar.datesLockedNote}</p>
+                    <p style={{ fontSize: 10, color: '#92400E', margin: '0 0 10px' }}>{t.calendar.rescheduleNote}</p>
                   )}
 
                   {actionError && <p style={{ fontSize: 11, color: '#B91C1C', marginBottom: 10 }}>{actionError}</p>}

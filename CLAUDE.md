@@ -21,9 +21,15 @@ purpose (renaming the cookie would reset every user's saved language preference)
 - Map: react-leaflet + OSM tiles + heat layer.
 - LLM: OpenAI-compatible client, **Groq now** (`GROQ_API_KEY`, base `https://api.groq.com/openai/v1`,
   a tool-use model), swappable to Claude/OpenAI via `LLM_PROVIDER`/`LLM_BASE_URL`/`LLM_MODEL`. All LLM
-  calls go behind one small `llm()` wrapper in `src/lib/llm.ts`. Handle 429s with backoff.
-- Embeddings: Groq has none → RAG uses Postgres full-text search now (local-embedding pgvector later).
-- Web search (flight fares): Groq compound model or Tavily/SerpApi.
+  calls go behind `src/lib/llm.ts`: `llm()` (plain), `llmChat()` (tool use — Lexi orchestrator),
+  `llmWebSearch()` (compound model). Handle 429s with backoff (3-key rotation built in). **Groq gotcha:**
+  llama models stochastically 400 with `tool_use_failed` on tool calls — `recoverToolCall()` in llm.ts
+  parses the intended call out of the error's `failed_generation`; do not remove it.
+- Embeddings: Groq has none → Lexi's KB retrieval is fetch-and-rank in `src/lib/knowledgeBase.ts`
+  (small interface — swap for FTS/pgvector later). KB rows live in `knowledge_base` (bilingual,
+  seeded by migration 022, editable via `/admin/database`).
+- Web search: Groq compound model — **`compound-beta` is retired**; use `groq/compound-mini`
+  (env `LLM_SEARCH_MODEL`) for Lexi's general answers, or Tavily/SerpApi for fares.
 - Email: `src/lib/email.ts` dispatches Resend (`RESEND_API_KEY`/`EMAIL_API_KEY`) → Nodemailer SMTP
   (requires `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` all set) → console-log dev fallback (which also
   prints the accept/decline links so flows are testable without a provider). **Current transport
@@ -60,9 +66,17 @@ purpose (renaming the cookie would reset every user's saved language preference)
   sensitive action.
 - **Identity.** One trainer = one person; many skills via `trainer_skills`. Trainer location derives from
   the school code.
-- **Engagement dates are locked once invitations are sent.** `POST /api/engagements/update` allows
-  title/venue edits on any non-Cancelled workshop, but start/end dates only while Draft — sent dates
-  are what trainers accepted; rescheduling means cancel + re-invite. Hard deletion
+- **Rescheduling an invited workshop resets trainer consent (2026-07-10 — replaces the old
+  "dates locked once invited" rule).** `POST /api/engagements/update` allows title/venue edits on any
+  non-Cancelled workshop; date edits are free while Draft, but once invitations are sent a date change
+  requires `confirm_reschedule: true` (else 409 `RESCHEDULE_CONFIRM_REQUIRED`) because trainers
+  accepted the OLD dates: every Pending Invite/Confirmed trainer is reset to Pending Invite
+  (`responded_at` nulled, `invited_at` bumped), ALL outstanding tokens invalidated, fresh accept/decline
+  pairs issued (expiry capped at the new start date), and a bilingual date-change email
+  (`buildRescheduleEmail`, amber bar, old dates struck through) sent to each — Declined trainers
+  untouched; rollup recomputed; audited as `engagement.reschedule`; creator gets an in-app
+  `engagement_rescheduled` notification when an admin rescheduled someone else's workshop. Never
+  change dates on an invited engagement without this flow. Hard deletion
   (`POST /api/engagements/delete`) is Draft-only; anything invited must use Cancel (soft, audited).
 - **Admin Database Console** (`/admin/database`): direct CRUD over the 7 reference tables only, driven
   by the allowlist registry in `src/lib/adminTables.ts` — never add transactional tables
@@ -70,6 +84,27 @@ purpose (renaming the cookie would reset every user's saved language preference)
   the registry; every mutation is audit-logged.
 - **Workshop Calendar** (`/calendar`): visible to ALL active users (deliberate product decision —
   matches what availability search already implies). Drafts hidden by default behind a toggle.
+- **Lexi assistant** (Phase 7, live): `POST /api/assistant` orchestrator + 6 deterministic tools in
+  `src/lib/assistantTools.ts` (KB search, find trainers, trainer history, availability, navigate,
+  web search). The LLM only parses intent and phrases replies — every count/cost/date comes from a
+  tool; Lexi has NO mutating tools and must never gain one that sends email, edits data, approves
+  users, or changes settings (those stay behind the human-approval screens; offer navigation instead).
+  General/web-search answers MUST keep the `generalKnowledge` flag → amber "general knowledge" label
+  in the drawer; never route system-data questions through web_search. Trainer history costs are
+  queried as the CALLER (RLS-scoped); admin screens are role-gated in the navigate tool. Prompt
+  chips + all assistant copy live in the `lexi` i18n namespace (en+bm).
+  **Conversation memory (2026-07-10):** history is server-authoritative — `POST /api/assistant`
+  takes only `{message, locale}`; each turn persists to `assistant_messages` and older turns are
+  condensed into a per-user rolling summary (`assistant_memory`), both from migration 023,
+  maintained by `src/lib/assistantMemory.ts` and injected into the system prompt. The drawer
+  replays history via `GET /api/assistant/history`; Clear = `DELETE` on the same route. All memory
+  ops are best-effort (Lexi still answers if 023 isn't applied). Chats are private: RLS select-own
+  only, deliberately NO admin-read-all policy; writes go through the admin client scoped to the
+  caller. Exact figures must still come from tools — never from the memory summary.
+- **In-app notifications**: `/api/invitations/respond` writes a bilingual `notifications` row for the
+  engagement creator on trainer accept/decline (best-effort — must never break the response flow);
+  TopBar `NotificationBell` + `GET/POST /api/notifications` (list own via RLS; mark-read via admin
+  client scoped to the caller).
 - **Never commit PII or secrets.** Real keys live in `.env.local` only. Keep the cleaned dataset out of
   git; load it into the database via the Phase 1 ingestion.
 - **Never trigger a real email send to a fake/reserved address** (e.g. `@example.com`) — Supabase flagged

@@ -75,13 +75,17 @@ export default async function EngagementsPage({
     )
   )
 
-  // 3. Invitation token expiry, per (engagement_id, trainer_id)
+  // 3. Invitation token expiry, per (engagement_id, trainer_id).
+  // Only LIVE tokens — after a reinvite/reschedule the old rotated-out
+  // tokens still exist with used_at set, and last-write-wins here would
+  // show a dead token's expiry.
   const { data: tokens } = engagementIds.length > 0
     ? await admin
         .from('invitation_tokens')
         .select('engagement_id, trainer_id, expires_at')
         .in('engagement_id', engagementIds)
         .eq('action_scope', 'accept')
+        .is('used_at', null)
     : { data: [] }
 
   const tokenExpiryMap: Record<string, string> = {}

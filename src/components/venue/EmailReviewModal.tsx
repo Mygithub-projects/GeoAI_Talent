@@ -59,8 +59,11 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ engagement_id: engagementId, trainer_ids: selectedTrainers.map(t => t.trainer_id) }),
     })
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error ?? 'Failed to load draft')
+        }
         setSubject(data.subject ?? '')
         setMessage(data.message ?? '')
         setVenueName(data.venue_name ?? '')
@@ -69,7 +72,7 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
         setEndDate(data.end_date ?? null)
         setExpiresAt(data.expires_at ?? null)
       })
-      .catch(() => setError('Failed to load draft'))
+      .catch(err => setError(err instanceof Error ? err.message : 'Failed to load draft'))
       .finally(() => setLoadingDraft(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, engagementId])

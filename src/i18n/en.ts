@@ -17,6 +17,30 @@ export interface Translations {
     mainNavigation: string
     toggleNav: string
   }
+  lexi: {
+    title: string
+    greeting: string
+    inputPlaceholder: string
+    send: string
+    thinking: string
+    generalKnowledgeLabel: string
+    errorMessage: string
+    clearChat: string
+    suggestionsLabel: string
+    chipFindTrainers: string
+    chipAvailability: string
+    chipHistory: string
+    chipOpenCalendar: string
+    chipOpenEngagements: string
+    chipHowCost: string
+    chipWhatIsModeB: string
+  }
+  notif: {
+    title: string
+    empty: string
+    markAllRead: string
+    openAria: string
+  }
   landing: {
     heroDescription: string
     featureMap: string
@@ -187,7 +211,12 @@ export interface Translations {
     startLabel: string
     endLabel: string
     saving: string
-    datesLockedNote: string
+    rescheduleNote: string
+    rescheduleConfirm: string
+    rescheduleResultTitle: string
+    rescheduleEmailOk: string
+    rescheduleEmailFailed: string
+    rescheduleNoTrainers: string
     cancelWorkshop: string
     cancelConfirm: string
     deleteDraft: string
@@ -341,6 +370,30 @@ export const en: Translations = {
     adminBadge: 'Admin',
     mainNavigation: 'Main navigation',
     toggleNav: 'Toggle navigation',
+  },
+  lexi: {
+    title: 'Lexi',
+    greeting: 'Hi, I\'m Lexi — I can find trainers, check schedules, explain how this system works, and answer general questions. Try one of these, or ask me anything:',
+    inputPlaceholder: 'Ask Lexi…',
+    send: 'Send',
+    thinking: 'Lexi is thinking…',
+    generalKnowledgeLabel: 'General knowledge — not from system data',
+    errorMessage: 'Sorry, I couldn\'t process that right now. Please try again.',
+    clearChat: 'Clear conversation',
+    suggestionsLabel: 'Suggestions',
+    chipFindTrainers: 'How many trainers know Scratch in Kuching?',
+    chipAvailability: 'Is [trainer name] free on 14–16 July?',
+    chipHistory: 'Show [trainer name]\'s engagement and travel history',
+    chipOpenCalendar: 'Open the workshop calendar',
+    chipOpenEngagements: 'Open my engagements',
+    chipHowCost: 'How is travel cost calculated?',
+    chipWhatIsModeB: 'What is Mode B and how do I use it?',
+  },
+  notif: {
+    title: 'Notifications',
+    empty: 'No notifications yet.',
+    markAllRead: 'Mark all as read',
+    openAria: 'Open notifications',
   },
   landing: {
     heroDescription:
@@ -515,7 +568,12 @@ export const en: Translations = {
     startLabel: 'Start date',
     endLabel: 'End date',
     saving: 'Saving…',
-    datesLockedNote: 'Dates are locked once invitations have been sent — trainers accepted these dates. Cancel and re-invite to reschedule.',
+    rescheduleNote: 'Changing the dates will reset invited and accepted trainers to Pending and re-send invitations with the new dates.',
+    rescheduleConfirm: 'Change the dates of this workshop? All invited and accepted trainers will be reset to Pending, their old links invalidated, and a date-change email with new confirmation links will be sent to each of them.',
+    rescheduleResultTitle: 'Dates updated — re-confirmation requests sent',
+    rescheduleEmailOk: 'email sent',
+    rescheduleEmailFailed: 'email NOT delivered',
+    rescheduleNoTrainers: 'No invited trainers to notify — dates updated.',
     cancelWorkshop: 'Cancel workshop',
     cancelConfirm: 'Cancel this workshop? All outstanding invitation links will be invalidated. This keeps the history but cannot be re-opened.',
     deleteDraft: 'Delete draft',

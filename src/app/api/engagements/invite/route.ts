@@ -6,6 +6,7 @@ import { sendEmail, resolveVenueName } from '@/lib/email'
 import { buildInvitationEmail } from '@/lib/emailContent'
 import { mergeTemplate } from '@/lib/emailTemplate'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
+import { validateInviteDateRange } from '@/lib/dateValidation'
 
 const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
@@ -77,6 +78,11 @@ export async function POST(req: NextRequest) {
       { error: `Engagement is already ${engagement.workflow_status}` },
       { status: 409 },
     )
+  }
+
+  const validation = validateInviteDateRange(engagement.start_date as string | null, engagement.end_date as string | null)
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 })
   }
 
   // ── 6. Skip trainers already invited for this engagement ─────

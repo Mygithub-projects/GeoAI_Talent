@@ -3,6 +3,7 @@
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { VenueAutocomplete, type VenueOption } from './VenueAutocomplete'
 import { SkillCheckboxFilter } from '@/components/map/SkillCheckboxFilter'
+import { getTodayDateString } from '@/lib/dateValidation'
 
 interface SkillSubject {
   item_id: number
@@ -60,11 +61,16 @@ export function VenueSearchPanel({
 }: VenueSearchPanelProps) {
   const { t } = useLanguage()
 
+  const today = getTodayDateString()
+  const isStartPast = !!startDate && startDate < today
+  const isEndPast = !!endDate && endDate < today
+  const isUpcoming = !!startDate && !!endDate && startDate >= today && endDate >= today
   const canFind =
     !!venueName &&
     !!startDate &&
     !!endDate &&
     startDate <= endDate &&
+    isUpcoming &&
     !isRecommending
 
   return (
@@ -147,6 +153,7 @@ export function VenueSearchPanel({
               onChange={e => onStartDateChange(e.target.value)}
               className="w-full cursor-pointer rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
               aria-label={t.map.startDate}
+              min={today}
             />
           </div>
           <div>
@@ -154,12 +161,17 @@ export function VenueSearchPanel({
             <input
               type="date"
               value={endDate}
-              min={startDate || undefined}
+              min={startDate || today}
               onChange={e => onEndDateChange(e.target.value)}
               className="w-full cursor-pointer rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
               aria-label={t.map.endDate}
             />
           </div>
+          {(isStartPast || isEndPast) && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-medium text-amber-700">
+              Please select a date today or later.
+            </p>
+          )}
           <div>
             <label className="mb-0.5 block text-[10px] text-muted">{t.map.trainersNeeded}</label>
             <input

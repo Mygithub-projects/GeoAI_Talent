@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveVenueName } from '@/lib/email'
 import { defaultInvitationMessage, defaultInvitationSubject } from '@/lib/emailContent'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
+import { validateInviteDateRange } from '@/lib/dateValidation'
 
 const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
 
@@ -47,6 +48,11 @@ export async function POST(req: NextRequest) {
 
   if (engErr || !engagement) {
     return NextResponse.json({ error: 'Engagement not found' }, { status: 404 })
+  }
+
+  const validation = validateInviteDateRange(engagement.start_date as string | null, engagement.end_date as string | null)
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 })
   }
 
   const venueName = await resolveVenueName(admin, engagement)

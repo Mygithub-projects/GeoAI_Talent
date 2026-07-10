@@ -2,6 +2,7 @@
 
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import { NotificationBell } from '@/components/shell/NotificationBell'
 
 interface TopBarProps {
   userName: string | null
@@ -48,6 +49,7 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
       <div className="flex-1" />
 
       {/* Right-hand controls */}
+      <NotificationBell />
       <LanguageToggle />
 
       {/* User name + role badge */}
