@@ -343,7 +343,10 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-0">
+      {/* z-[1000] lifts the panels above Leaflet's internal panes (z 400–700),
+          which compete globally because .leaflet-container creates no stacking
+          context — same convention as MapControls on the dashboard. */}
+      <div className="pointer-events-none absolute inset-0 z-[1000]">
 
         {/* ── Left: filter panel ─────────────────────────────── */}
         <div className={`${panelCls} absolute left-4 top-4 bottom-4 w-72 overflow-y-auto p-4`}>
