@@ -58,6 +58,9 @@ purpose (renaming the cookie would reset every user's saved language preference)
 - **Two modes, shared radius (0–500 km, default 50).** Mode A = no venue → trainer heatmap + subject/skill
   filter, centred on the user's own district by default (statewide for admins). Mode B = dynamic venue
   (geocode a place name / match registry / drop a map pin) → recommend within the radius.
+  **Layout note (2026-07-13, user decision):** the trainer-count pill sits bottom-left in Mode A
+  (with the Drop-pin button) but next to the top-centre mode toggle in Mode B — the venue panel owns
+  Mode B's left side; do not move the pill back to the corner there.
 - **Single active language + translate function.** Stored EN/BM are the translation source for fixed
   content; free text translated on demand via `/api/translate`. Never show both languages at once.
 - **Security.** RLS enforced in the DB: WRITE access to schools/master_trainers/trainer_skills/
