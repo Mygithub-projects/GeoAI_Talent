@@ -125,6 +125,11 @@ export interface Translations {
     navEngagements: string
     navAdmin: string
     navDatabase: string
+    navAnalytics: string
+    navAudit: string
+    navReports: string
+    navTalent: string
+    navTrainerFeedback: string
     navCalendar: string
     navSettings: string
     assistant: string
@@ -190,6 +195,7 @@ export interface Translations {
   calendar: {
     title: string
     subtitle: string
+    subtitleUser: string
     today: string
     prevMonth: string
     nextMonth: string
@@ -231,12 +237,201 @@ export interface Translations {
     editRow: string
     deleteRow: string
     deleteConfirm: string
+    softDeleteConfirm: string
+    deletedToggle: string
+    deletedAtCol: string
+    restoreRow: string
+    restoreConfirm: string
     actionsCol: string
     noRows: string
     save: string
     savingLabel: string
     prevPage: string
     nextPage: string
+  }
+  audit: {
+    title: string
+    subtitle: string
+    searchPlaceholder: string
+    allActions: string
+    fromDate: string
+    toDate: string
+    shownSuffix: string
+    clearFilters: string
+    thWhen: string
+    thActor: string
+    thAction: string
+    thEntity: string
+    thDetails: string
+    noRows: string
+    systemActor: string
+  }
+  analytics: {
+    title: string
+    subtitle: string
+    noData: string
+    tileTrainers: string
+    tileWorkshops: string
+    tileConfirmedSuffix: string
+    tileInvites: string
+    tileAcceptRate: string
+    tileDistricts: string
+    tileDesertsSuffix: string
+    adoptTitle: string
+    adoptSubtitle: string
+    adoptConfirmed: string
+    adoptPending: string
+    adoptDeclined: string
+    adoptAcceptRate: string
+    adoptStaffed: string
+    adoptStaffedSub: string
+    overlapTitle: string
+    overlapSubtitle: string
+    overlapNone: string
+    overlapFound: string
+    overlapNote: string
+    costTitle: string
+    costSubtitle: string
+    costFilterLabel: string
+    costFilterAll: string
+    costDownloadCsv: string
+    costDownloadPdf: string
+    costAccuracy: string
+    costAccuracySub: string
+    costMae: string
+    costWithActuals: string
+    costTotalEstimated: string
+    costThEngagement: string
+    costThTrainer: string
+    costThMode: string
+    costThEstimated: string
+    costThActual: string
+    costThVariance: string
+    costEnterActual: string
+    costSave: string
+    costInvalidNumber: string
+    costNoRows: string
+    costNote: string
+    covTitle: string
+    covSubtitle: string
+    covDesertBadge: string
+    covNoTrainers: string
+  }
+  reports: {
+    title: string
+    subtitleAdmin: string
+    subtitleUser: string
+    migrationBanner: string
+    searchPlaceholder: string
+    fromDate: string
+    toDate: string
+    allDistricts: string
+    allWorkshops: string
+    allStatuses: string
+    allResponses: string
+    exportCsv: string
+    noWorkshops: string
+    noTrainers: string
+    untitled: string
+    footnote: string
+    chipWorkshops: string
+    chipInvited: string
+    chipAccepted: string
+    chipPending: string
+    chipDeclined: string
+    chipEstCost: string
+    thWorkshop: string
+    thDates: string
+    thDistrict: string
+    thStatus: string
+    thInvited: string
+    thAccepted: string
+    thPending: string
+    thDeclined: string
+    thEstCost: string
+    costInvitedPrefix: string
+    thTrainer: string
+    thTrainerDistrict: string
+    thResponse: string
+    thResponded: string
+    thDistance: string
+    thEstCostT: string
+    thActualCost: string
+    thClassification: string
+    aiSuggestBtn: string
+    aiSuggesting: string
+    aiSuggestionPrefix: string
+    aiDisclaimer: string
+    approveBtn: string
+    overrideLabel: string
+    decidedLabel: string
+    stDraft: string
+    stPendingInvite: string
+    stConfirmed: string
+    stDeclined: string
+    stCancelled: string
+    clsSuitable: string
+    clsPendingReview: string
+    clsNotMatched: string
+    clsConfirmed: string
+    clsDeclined: string
+  }
+  talent: {
+    title: string
+    subtitle: string
+    searchPlaceholder: string
+    allDistricts: string
+    dateFrom: string
+    dateTo: string
+    availAll: string
+    availAvailable: string
+    availEngaged: string
+    radiusTitle: string
+    dropCentre: string
+    dropCentreActive: string
+    clearCentre: string
+    trainersShown: string
+    districtsCovered: string
+    desertsChip: string
+    congestedChip: string
+    legendTitle: string
+    pinLegendTitle: string
+    insightsHint: string
+    legendNone: string
+    legendLow: string
+    legendHigh: string
+    legendNormal: string
+    desertsTitle: string
+    congestedTitle: string
+    noneFlagged: string
+    trainerPanelTitle: string
+    school: string
+    district: string
+    coordinates: string
+    roles: string
+    skills: string
+    subjects: string
+    noSchool: string
+    clearSelection: string
+    zoomHint: string
+    transferBtn: string
+    transferTitle: string
+    transferIntro: string
+    transferSearchLabel: string
+    transferOr: string
+    transferPinBtn: string
+    transferPinHint: string
+    transferPinCancel: string
+    currentLabel: string
+    newLabel: string
+    districtChangeNote: string
+    keepDistrictNote: string
+    confirmBtn: string
+    confirming: string
+    cancelBtn: string
+    transferFailed: string
+    auditNote: string
+    loading: string
   }
   invitationResponse: {
     acceptedTitle: string
@@ -249,6 +444,82 @@ export interface Translations {
     alreadyUsedMessage: string
     invalidTitle: string
     invalidMessage: string
+    confirmAcceptTitle: string
+    confirmDeclineTitle: string
+    confirmAcceptMessage: string
+    confirmDeclineMessage: string
+    confirmAcceptBtn: string
+    confirmDeclineBtn: string
+    confirmSubmitting: string
+    confirmNote: string
+    labelProgramme: string
+    labelVenue: string
+    labelDates: string
+  }
+  feedback: {
+    title: string
+    intro: string
+    programmeLabel: string
+    venueLabel: string
+    datesLabel: string
+    deadlineNote: string
+    ratingContent: string
+    ratingMaterials: string
+    ratingVenue: string
+    ratingCommunication: string
+    ratingOverall: string
+    starLabel: string
+    wouldRecommendLabel: string
+    yes: string
+    no: string
+    commentsLabel: string
+    commentsHint: string
+    commentsPlaceholder: string
+    fieldRequired: string
+    submitBtn: string
+    submitting: string
+    retryHint: string
+    successTitle: string
+    successMessage: string
+    alreadySubmittedTitle: string
+    alreadySubmittedMessage: string
+    expiredTitle: string
+    expiredMessage: string
+    invalidTitle: string
+    invalidMessage: string
+  }
+  trainerFeedback: {
+    title: string
+    subtitleAdmin: string
+    subtitleUser: string
+    migrationBanner: string
+    allWorkshops: string
+    workshopsShown: string
+    untitled: string
+    tileResponses: string
+    tileResponsesSub: string
+    tileAvgOverall: string
+    tileAvgOverallSub: string
+    tileRecommendPct: string
+    tileResponseRate: string
+    tileResponseRateSub: string
+    noWorkshopsTitle: string
+    noWorkshopsDesc: string
+    noFeedbackYetTitle: string
+    noFeedbackYetDesc: string
+    responsesOf: string
+    catContent: string
+    catMaterials: string
+    catVenue: string
+    catCommunication: string
+    catOverall: string
+    recommendTitle: string
+    recommendYes: string
+    recommendNo: string
+    commentsHeading: string
+    noComments: string
+    anonymousTrainer: string
+    footnote: string
   }
   admin: {
     usersTitle: string
@@ -308,6 +579,7 @@ export interface Translations {
     thProgress: string
     thStatus: string
     thBy: string
+    thDistrict: string
     thWhen: string
     thActions: string
     thTrainer: string
@@ -482,6 +754,11 @@ export const en: Translations = {
     navEngagements: 'Engagements',
     navAdmin: 'Admin',
     navDatabase: 'Database',
+    navAnalytics: 'Analytics',
+    navAudit: 'Audit Log',
+    navReports: 'Reports',
+    navTalent: 'Talent Distribution',
+    navTrainerFeedback: 'Trainer Feedback',
     navCalendar: 'Calendar',
     navSettings: 'Settings',
     assistant: 'Assistant',
@@ -538,7 +815,7 @@ export const en: Translations = {
     sendResultsTitle: 'Send results',
     sendSuccessOne: 'Sent',
     sendFailedOne: 'Failed',
-    sentNoEmail: 'Invitation recorded — email was NOT delivered (no email provider configured)',
+    sentNoEmail: 'Invitation recorded — email was NOT delivered (send failed or no provider — check the network/SMTP settings, then use Re-invite)',
     retryFailed: 'Retry failed',
     done: 'Done',
     invitedTrainersLabel: 'Invited trainers',
@@ -547,6 +824,7 @@ export const en: Translations = {
   calendar: {
     title: 'Workshop calendar',
     subtitle: 'All scheduled workshops at a glance — confirmed dates lock a trainer out of overlapping searches automatically.',
+    subtitleUser: 'Your scheduled workshops at a glance — confirmed dates lock a trainer out of overlapping searches automatically.',
     today: 'Today',
     prevMonth: 'Previous month',
     nextMonth: 'Next month',
@@ -588,12 +866,201 @@ export const en: Translations = {
     editRow: 'Edit',
     deleteRow: 'Delete',
     deleteConfirm: 'Delete this row permanently? This cannot be undone.',
+    softDeleteConfirm: 'Delete this row? It will be hidden from the app but can be restored from the Deleted rows view.',
+    deletedToggle: 'Deleted rows',
+    deletedAtCol: 'Deleted',
+    restoreRow: 'Restore',
+    restoreConfirm: 'Restore this row? It will reappear everywhere in the app.',
     actionsCol: 'Actions',
     noRows: 'No rows found.',
     save: 'Save',
     savingLabel: 'Saving…',
     prevPage: 'Prev',
     nextPage: 'Next',
+  },
+  audit: {
+    title: 'Audit log',
+    subtitle: 'Every sensitive action recorded by the system — latest 500 entries. Click a row to see the full recorded detail.',
+    searchPlaceholder: 'Search actor, action, entity or detail…',
+    allActions: 'All actions',
+    fromDate: 'From',
+    toDate: 'To',
+    shownSuffix: 'shown',
+    clearFilters: 'Clear filters',
+    thWhen: 'When',
+    thActor: 'Actor',
+    thAction: 'Action',
+    thEntity: 'Entity',
+    thDetails: 'Details',
+    noRows: 'No audit entries match.',
+    systemActor: 'System',
+  },
+  analytics: {
+    title: 'Analytics & KPIs',
+    subtitle: 'Programme KPIs computed live from system data. All figures are deterministic — nothing here is estimated by AI.',
+    noData: 'No data yet.',
+    tileTrainers: 'Active trainers',
+    tileWorkshops: 'Workshops',
+    tileConfirmedSuffix: 'confirmed',
+    tileInvites: 'Invitations sent',
+    tileAcceptRate: 'Accept rate',
+    tileDistricts: 'Districts covered',
+    tileDesertsSuffix: 'talent deserts',
+    adoptTitle: 'Recommendation adoption',
+    adoptSubtitle: 'Outcome of every trainer invitation sent through the system.',
+    adoptConfirmed: 'Accepted',
+    adoptPending: 'Awaiting reply',
+    adoptDeclined: 'Declined',
+    adoptAcceptRate: 'Accept rate (of responses)',
+    adoptStaffed: 'Workshops fully staffed',
+    adoptStaffedSub: 'of workshops with invitations sent',
+    overlapTitle: 'Double-booking check',
+    overlapSubtitle: 'Confirmed bookings on overlapping dates for the same trainer.',
+    overlapNone: 'No overlapping confirmed bookings.',
+    overlapFound: 'Overlapping confirmed bookings found — review the calendar.',
+    overlapNote: 'The availability search excludes trainers with clashing confirmed or pending engagements by construction, so this figure should stay at zero. Checked across {n} trainers with confirmed bookings.',
+    costTitle: 'Cost-estimate accuracy',
+    costSubtitle: 'Estimated travel cost vs the actual claimed cost, for confirmed trainer bookings. Enter actuals as claims come in. Download the report to prepare a workshop budget.',
+    costFilterLabel: 'Workshop / programme',
+    costFilterAll: 'All workshops',
+    costDownloadCsv: 'Download CSV',
+    costDownloadPdf: 'Download PDF',
+    costAccuracy: 'Within ±20%',
+    costAccuracySub: 'KPI target: 80%',
+    costMae: 'Mean abs. error',
+    costWithActuals: 'Actuals recorded',
+    costTotalEstimated: 'Total estimated',
+    costThEngagement: 'Workshop',
+    costThTrainer: 'Trainer',
+    costThMode: 'Mode',
+    costThEstimated: 'Estimated',
+    costThActual: 'Actual (RM)',
+    costThVariance: 'Variance',
+    costEnterActual: 'RM…',
+    costSave: 'Save',
+    costInvalidNumber: 'Enter a valid non-negative amount.',
+    costNoRows: 'No confirmed bookings with travel estimates yet.',
+    costNote: 'Actual costs are entered manually from finance claims; every entry is audit-logged. Estimates remain estimates — verify with the finance officer before committing expenditure.',
+    covTitle: 'Talent coverage by district',
+    covSubtitle: 'Active Master Trainers per PPD district. Districts with fewer than {n} trainers are flagged as talent deserts.',
+    covDesertBadge: 'desert',
+    covNoTrainers: 'none',
+  },
+  reports: {
+    title: 'Reports',
+    subtitleAdmin: 'Workshop, invitation and travel-cost report across all districts. Figures are computed live from system data.',
+    subtitleUser: 'Workshop, invitation and travel-cost report for the workshops you created. Figures are computed live from system data.',
+    migrationBanner: 'Fit classification is unavailable — database migration 025 has not been applied yet. The report still works without it.',
+    searchPlaceholder: 'Search workshop, venue, trainer…',
+    fromDate: 'From',
+    toDate: 'To',
+    allDistricts: 'All districts',
+    allWorkshops: 'All workshops',
+    allStatuses: 'All statuses',
+    allResponses: 'All responses',
+    exportCsv: 'Export CSV',
+    noWorkshops: 'No workshops match your filters.',
+    noTrainers: 'No trainers invited yet.',
+    untitled: 'Untitled',
+    footnote: 'Costs shown are estimates computed by the system — verify with the finance officer before committing expenditure. CSV export is audit-logged.',
+    chipWorkshops: 'Workshops',
+    chipInvited: 'Invited',
+    chipAccepted: 'Accepted',
+    chipPending: 'Pending',
+    chipDeclined: 'Declined',
+    chipEstCost: 'Est. cost (confirmed)',
+    thWorkshop: 'Workshop',
+    thDates: 'Dates',
+    thDistrict: 'District',
+    thStatus: 'Status',
+    thInvited: 'Invited',
+    thAccepted: 'Accepted',
+    thPending: 'Pending',
+    thDeclined: 'Declined',
+    thEstCost: 'Est. cost',
+    costInvitedPrefix: 'all invited:',
+    thTrainer: 'Trainer',
+    thTrainerDistrict: 'District',
+    thResponse: 'Response',
+    thResponded: 'Responded',
+    thDistance: 'Distance',
+    thEstCostT: 'Est. cost',
+    thActualCost: 'Actual cost',
+    thClassification: 'Classification',
+    aiSuggestBtn: 'AI suggestions',
+    aiSuggesting: 'Suggesting…',
+    aiSuggestionPrefix: 'AI suggestion',
+    aiDisclaimer: 'AI suggestions are advisory only — the final decision is always made by a person.',
+    approveBtn: 'Approve',
+    overrideLabel: 'Set classification…',
+    decidedLabel: 'approved',
+    stDraft: 'Draft',
+    stPendingInvite: 'Pending Invite',
+    stConfirmed: 'Confirmed',
+    stDeclined: 'Declined',
+    stCancelled: 'Cancelled',
+    clsSuitable: 'Suitable',
+    clsPendingReview: 'Pending review',
+    clsNotMatched: 'Not matched',
+    clsConfirmed: 'Confirmed',
+    clsDeclined: 'Declined',
+  },
+  talent: {
+    title: 'Talent Distribution',
+    subtitle: 'Where trainer expertise is concentrated — and where it is missing.',
+    searchPlaceholder: 'Trainer name or ID…',
+    allDistricts: 'All districts',
+    dateFrom: 'From',
+    dateTo: 'To',
+    availAll: 'All trainers',
+    availAvailable: 'Available in range',
+    availEngaged: 'Engaged in range',
+    radiusTitle: 'Centre & radius',
+    dropCentre: 'Drop a centre point',
+    dropCentreActive: 'Click the map to set the centre…',
+    clearCentre: 'Clear',
+    trainersShown: 'Trainers',
+    districtsCovered: 'Districts covered',
+    desertsChip: 'Talent deserts',
+    congestedChip: 'Congested',
+    legendTitle: 'District coverage',
+    pinLegendTitle: 'Pin colour = PPD district',
+    insightsHint: 'Each dot is a district — its colour shows how well it is covered by trainers for the current filters. Hover a dot to see the number of trainers.',
+    legendNone: 'No trainers here',
+    legendLow: 'Very few trainers',
+    legendHigh: 'Highly concentrated',
+    legendNormal: 'Well covered',
+    desertsTitle: 'Talent deserts',
+    congestedTitle: 'Talent congestion',
+    noneFlagged: 'None for the current filter.',
+    trainerPanelTitle: 'Selected trainer',
+    school: 'Workstation',
+    district: 'District',
+    coordinates: 'Coordinates',
+    roles: 'Roles',
+    skills: 'Skills',
+    subjects: 'Subjects',
+    noSchool: 'No registry school linked',
+    clearSelection: 'Clear selection',
+    zoomHint: 'Zoom in or select a district badge to see individual trainers.',
+    transferBtn: 'Update workstation (transfer)',
+    transferTitle: 'Transfer workstation',
+    transferIntro: 'Set the new workstation for {name}. Pick a registry school, search a place, or drop a pin on the map.',
+    transferSearchLabel: 'Search school registry or place name',
+    transferOr: 'or',
+    transferPinBtn: 'Drop a pin on the map',
+    transferPinHint: 'Click the map at the new workstation location…',
+    transferPinCancel: 'Cancel pin drop',
+    currentLabel: 'Current',
+    newLabel: 'New',
+    districtChangeNote: 'District will update to the school\'s PPD district.',
+    keepDistrictNote: 'District stays unchanged (arbitrary location).',
+    confirmBtn: 'Confirm transfer',
+    confirming: 'Transferring…',
+    cancelBtn: 'Cancel',
+    transferFailed: 'Transfer failed',
+    auditNote: 'This change is written to the audit log.',
+    loading: 'Loading trainers…',
   },
   invitationResponse: {
     acceptedTitle: 'Invitation accepted',
@@ -606,6 +1073,82 @@ export const en: Translations = {
     alreadyUsedMessage: 'This invitation has already been responded to.',
     invalidTitle: 'Invalid link',
     invalidMessage: 'This invitation link is invalid. Please contact the training coordinator for assistance.',
+    confirmAcceptTitle: 'Confirm your acceptance',
+    confirmDeclineTitle: 'Confirm your decline',
+    confirmAcceptMessage: 'You are about to ACCEPT the invitation for the programme below. Press the button to confirm.',
+    confirmDeclineMessage: 'You are about to DECLINE the invitation for the programme below. Press the button to confirm.',
+    confirmAcceptBtn: '✔ Confirm — Accept invitation',
+    confirmDeclineBtn: '✘ Confirm — Decline invitation',
+    confirmSubmitting: 'Recording your response…',
+    confirmNote: 'Nothing is recorded until you press the button above.',
+    labelProgramme: 'Programme',
+    labelVenue: 'Venue',
+    labelDates: 'Dates',
+  },
+  feedback: {
+    title: 'Workshop feedback',
+    intro: 'Dear {name}, thank you for serving as Master Trainer. Please share your experience of the workshop below — it takes just a few minutes.',
+    programmeLabel: 'Programme',
+    venueLabel: 'Venue',
+    datesLabel: 'Dates',
+    deadlineNote: 'Please submit this form by {date}.',
+    ratingContent: 'Content relevance',
+    ratingMaterials: 'Materials & resources provided',
+    ratingVenue: 'Venue & logistics',
+    ratingCommunication: 'Organizer communication',
+    ratingOverall: 'Overall satisfaction',
+    starLabel: 'Rate {n} out of 5',
+    wouldRecommendLabel: 'Would you recommend this programme to other trainers?',
+    yes: 'Yes',
+    no: 'No',
+    commentsLabel: 'Comments & suggestions',
+    commentsHint: 'Optional',
+    commentsPlaceholder: 'Anything that went well, or could be improved…',
+    fieldRequired: 'Please select a rating.',
+    submitBtn: 'Submit feedback',
+    submitting: 'Submitting…',
+    retryHint: 'please try again.',
+    successTitle: 'Feedback submitted',
+    successMessage: 'Thank you — your feedback has been recorded. It helps us improve future workshops.',
+    alreadySubmittedTitle: 'Already submitted',
+    alreadySubmittedMessage: 'Feedback for this workshop has already been submitted. Thank you!',
+    expiredTitle: 'Link expired',
+    expiredMessage: 'This feedback link has expired. Please contact the programme coordinator if you would still like to share feedback.',
+    invalidTitle: 'Invalid link',
+    invalidMessage: 'This feedback link is invalid. Please contact the programme coordinator for assistance.',
+  },
+  trainerFeedback: {
+    title: 'Trainer Feedback',
+    subtitleAdmin: 'Post-workshop feedback from Master Trainers across all workshops. Requests are emailed automatically once a workshop completes.',
+    subtitleUser: 'Post-workshop feedback from Master Trainers for the workshops you created. Requests are emailed automatically once a workshop completes.',
+    migrationBanner: 'Feedback data is unavailable — database migration 027 has not been applied yet.',
+    allWorkshops: 'All workshops',
+    workshopsShown: '{n} workshop(s)',
+    untitled: 'Untitled',
+    tileResponses: 'Responses received',
+    tileResponsesSub: 'of {n} requests sent',
+    tileAvgOverall: 'Avg. overall rating',
+    tileAvgOverallSub: 'out of 5',
+    tileRecommendPct: 'Would recommend',
+    tileResponseRate: 'Response rate',
+    tileResponseRateSub: 'responses ÷ requests sent',
+    noWorkshopsTitle: 'No workshops with confirmed trainers yet',
+    noWorkshopsDesc: 'Feedback is collected from confirmed trainers after a workshop completes.',
+    noFeedbackYetTitle: 'No feedback submitted yet',
+    noFeedbackYetDesc: 'Feedback requests are emailed automatically the day after a workshop ends. Responses will appear here.',
+    responsesOf: '{received} of {requested} responses',
+    catContent: 'Content relevance',
+    catMaterials: 'Materials & resources',
+    catVenue: 'Venue & logistics',
+    catCommunication: 'Organizer communication',
+    catOverall: 'Overall satisfaction',
+    recommendTitle: 'Would recommend',
+    recommendYes: 'Yes',
+    recommendNo: 'No',
+    commentsHeading: 'Comments',
+    noComments: 'No written comments yet.',
+    anonymousTrainer: 'Trainer',
+    footnote: 'Ratings are averages of submitted trainer feedback. Requests are sent automatically 1 day after a workshop\'s end date, with a 14-day deadline to respond.',
   },
   admin: {
     usersTitle: 'User management',
@@ -666,6 +1209,7 @@ export const en: Translations = {
     thProgress: 'Progress',
     thStatus: 'Status',
     thBy: 'By',
+    thDistrict: 'District',
     thWhen: 'When',
     thActions: 'Actions',
     thTrainer: 'Trainer',

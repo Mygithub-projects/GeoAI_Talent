@@ -55,7 +55,12 @@ purpose (renaming the cookie would reset every user's saved language preference)
   trainer_roles is admin-only (`is_admin()`). READ access to that data is open to every active
   authenticated user regardless of role or assigned district — `profiles.ppd_district` (including the
   `STATEWIDE` sentinel) only selects the map's default camera position on login, it does not gate what
-  rows a query can return. Signed, single-use, expiring invitation tokens.
+  rows a query can return. Signed, single-use, expiring invitation tokens. **Email links must NEVER
+  mutate on GET** (2026-07-13): email security scanners prefetch GET links, which auto-accepted/declined
+  invitations. Accept/decline links land on the public confirmation page (`/invitations/confirm`) and
+  the state change is POST-only (`POST /api/invitations/respond`, plain form submit). Apply the same
+  GET-validates/POST-mutates split to any future email-link action. `/invitations/*` and `/feedback`
+  bypass the proxy route guard.
   Registration domain-restricted (@moe.gov.my) OR on the admin allowlist. Admin allowlist:
   wun@iegcampus.com, mich88lim@gmail.com, michelle.lim@gmail.com — auto-set to admin on sign-up.
   All other accounts start as role=user, status=pending. No self-promotion (role/status changes are
@@ -82,8 +87,21 @@ purpose (renaming the cookie would reset every user's saved language preference)
   by the allowlist registry in `src/lib/adminTables.ts` — never add transactional tables
   (engagements/tokens/audit/profiles) or `admin_allowlist` to it. Every request is validated against
   the registry; every mutation is audit-logged.
-- **Workshop Calendar** (`/calendar`): visible to ALL active users (deliberate product decision —
-  matches what availability search already implies). Drafts hidden by default behind a toggle.
+- **Workshop Calendar** (`/calendar`): scoped like `/engagements` and `/reports` (user decision
+  2026-07-12, REPLACING the original visible-to-all rule) — admins see every workshop, non-admins
+  only workshops they created. The scoping lives in `GET /api/calendar` (reads go through the
+  service-role client, so that query filter IS the access boundary). Drafts hidden by default
+  behind a toggle.
+- **Post-workshop trainer feedback** (Phase 9): the app's ONLY scheduled job — Supabase pg_cron+pg_net
+  (migration 027) POSTs daily to `/api/cron/feedback-requests` (auth = `x-cron-secret` header vs
+  `CRON_SECRET`; the URL/secret live in `app.settings.feedback_cron_*` DB GUCs, set manually per
+  environment, never in git). Workshop "completed" is INFERRED (`workflow_status='Confirmed'` AND
+  `end_date < today`) — never add a Completed enum value. Idempotency = `feedback_email_sent_at`
+  claim-then-send on `engagement_trainers`; email failures never roll back the claim. Trainers fill
+  the PUBLIC `/feedback?token=` form (signed single-use `feedback_tokens`, 17-day expiry, 14-day
+  stated deadline; `/feedback` bypasses the proxy route guard — keep it that way). Submissions land
+  in `workshop_feedback` (UNIQUE per engagement+trainer). `/trainer-feedback` dashboard is scoped
+  like `/reports`/`/calendar` (admins all, non-admins own workshops via `created_by`).
 - **Lexi assistant** (Phase 7, live): `POST /api/assistant` orchestrator + 6 deterministic tools in
   `src/lib/assistantTools.ts` (KB search, find trainers, trainer history, availability, navigate,
   web search). The LLM only parses intent and phrases replies — every count/cost/date comes from a

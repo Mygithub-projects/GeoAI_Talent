@@ -144,6 +144,7 @@ export function DatabaseConsoleClient() {
   const [total, setTotal]     = useState(0)
   const [page, setPage]       = useState(1)
   const [q, setQ]             = useState('')
+  const [showDeleted, setShowDeleted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
 
@@ -161,12 +162,13 @@ export function DatabaseConsoleClient() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [q])
 
-  const fetchRows = useCallback(async (table: string, pageNum: number, search: string) => {
+  const fetchRows = useCallback(async (table: string, pageNum: number, search: string, deleted: boolean) => {
     setLoading(true)
     setListError(null)
     try {
       const params = new URLSearchParams({ page: String(pageNum), pageSize: String(PAGE_SIZE) })
       if (search) params.set('q', search)
+      if (deleted) params.set('deleted', '1')
       const res = await fetch(`/api/admin/tables/${table}?${params}`)
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? 'Failed to load rows')
@@ -183,14 +185,15 @@ export function DatabaseConsoleClient() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-filter-change effect, not derived state (same pattern as DashboardMap)
-    fetchRows(activeTable, page, debouncedQ)
-  }, [activeTable, page, debouncedQ, fetchRows])
+    fetchRows(activeTable, page, debouncedQ, showDeleted)
+  }, [activeTable, page, debouncedQ, showDeleted, fetchRows])
 
   function switchTable(name: string) {
     setActiveTable(name)
     setPage(1)
     setQ('')
     setDebouncedQ('')
+    setShowDeleted(false)
     setListError(null)
     // Clear immediately — the old table's rows lack the new table's
     // primary-key column, which briefly renders duplicate empty keys
@@ -214,7 +217,7 @@ export function DatabaseConsoleClient() {
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? 'Save failed')
       setModal(null)
-      fetchRows(activeTable, page, debouncedQ)
+      fetchRows(activeTable, page, debouncedQ, showDeleted)
     } catch (e) {
       setModalError((e as Error).message)
     } finally {
@@ -224,7 +227,8 @@ export function DatabaseConsoleClient() {
 
   async function handleDelete(row: Row) {
     const pk = row[def.primaryKey]
-    if (!window.confirm(`${t.adminDb.deleteConfirm} (${def.primaryKey}: ${displayValue(pk)})`)) return
+    const confirmMsg = def.softDelete ? t.adminDb.softDeleteConfirm : t.adminDb.deleteConfirm
+    if (!window.confirm(`${confirmMsg} (${def.primaryKey}: ${displayValue(pk)})`)) return
     setDeletingPk(String(pk))
     setListError(null)
     try {
@@ -235,7 +239,28 @@ export function DatabaseConsoleClient() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error ?? 'Delete failed')
-      fetchRows(activeTable, page, debouncedQ)
+      fetchRows(activeTable, page, debouncedQ, showDeleted)
+    } catch (e) {
+      setListError((e as Error).message)
+    } finally {
+      setDeletingPk(null)
+    }
+  }
+
+  async function handleRestore(row: Row) {
+    const pk = row[def.primaryKey]
+    if (!window.confirm(`${t.adminDb.restoreConfirm} (${def.primaryKey}: ${displayValue(pk)})`)) return
+    setDeletingPk(String(pk))
+    setListError(null)
+    try {
+      const res = await fetch(`/api/admin/tables/${activeTable}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pk, restore: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error ?? 'Restore failed')
+      fetchRows(activeTable, page, debouncedQ, showDeleted)
     } catch (e) {
       setListError((e as Error).message)
     } finally {
@@ -288,15 +313,31 @@ export function DatabaseConsoleClient() {
         <span style={{ fontSize: 12, color: '#64748B' }}>
           {t.adminDb.totalRows}: {total.toLocaleString()}
         </span>
-        <button
-          onClick={() => { setModalError(null); setModal({ mode: 'create', row: null }) }}
-          style={{
-            marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'white',
-            background: '#1E63C4', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
-          }}
-        >
-          + {t.adminDb.addRow}
-        </button>
+        {def.softDelete && (
+          <button
+            onClick={() => { setShowDeleted(v => !v); setPage(1) }}
+            style={{
+              fontSize: 12, fontWeight: showDeleted ? 700 : 500,
+              color: showDeleted ? 'white' : '#B91C1C',
+              background: showDeleted ? '#B91C1C' : 'white',
+              border: '1px solid ' + (showDeleted ? '#B91C1C' : '#FECACA'),
+              borderRadius: 99, padding: '6px 14px', cursor: 'pointer',
+            }}
+          >
+            {t.adminDb.deletedToggle}
+          </button>
+        )}
+        {!showDeleted && (
+          <button
+            onClick={() => { setModalError(null); setModal({ mode: 'create', row: null }) }}
+            style={{
+              marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'white',
+              background: '#1E63C4', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer',
+            }}
+          >
+            + {t.adminDb.addRow}
+          </button>
+        )}
       </div>
 
       {listError && (
@@ -320,6 +361,11 @@ export function DatabaseConsoleClient() {
                   {colLabel(col, locale)}
                 </th>
               ))}
+              {showDeleted && (
+                <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#B91C1C', whiteSpace: 'nowrap' }}>
+                  {t.adminDb.deletedAtCol}
+                </th>
+              )}
               <th style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, color: '#64748B' }}>
                 {t.adminDb.actionsCol}
               </th>
@@ -327,9 +373,9 @@ export function DatabaseConsoleClient() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={gridCols.length + 2} style={{ padding: 24, textAlign: 'center', color: '#94A3B8' }}>{t.common.loading}</td></tr>
+              <tr><td colSpan={gridCols.length + 2 + (showDeleted ? 1 : 0)} style={{ padding: 24, textAlign: 'center', color: '#94A3B8' }}>{t.common.loading}</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={gridCols.length + 2} style={{ padding: 24, textAlign: 'center', color: '#94A3B8' }}>{t.adminDb.noRows}</td></tr>
+              <tr><td colSpan={gridCols.length + 2 + (showDeleted ? 1 : 0)} style={{ padding: 24, textAlign: 'center', color: '#94A3B8' }}>{t.adminDb.noRows}</td></tr>
             ) : rows.map((row, idx) => {
               const pk = displayValue(row[def.primaryKey])
               return (
@@ -342,20 +388,37 @@ export function DatabaseConsoleClient() {
                       {displayValue(row[col.name])}
                     </td>
                   ))}
+                  {showDeleted && (
+                    <td style={{ padding: '8px 12px', color: '#B91C1C', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' }}>
+                      {row.deleted_at ? new Date(String(row.deleted_at)).toLocaleString() : ''}
+                    </td>
+                  )}
                   <td style={{ padding: '8px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button
-                      onClick={() => { setModalError(null); setModal({ mode: 'edit', row }) }}
-                      style={{ fontSize: 11, fontWeight: 600, color: '#1E63C4', background: 'transparent', border: '1px solid #BFDBFE', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', marginRight: 6 }}
-                    >
-                      {t.adminDb.editRow}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(row)}
-                      disabled={deletingPk === pk}
-                      style={{ fontSize: 11, fontWeight: 600, color: '#B91C1C', background: 'transparent', border: '1px solid #FECACA', borderRadius: 6, padding: '4px 10px', cursor: deletingPk === pk ? 'not-allowed' : 'pointer', opacity: deletingPk === pk ? 0.6 : 1 }}
-                    >
-                      {deletingPk === pk ? '…' : t.adminDb.deleteRow}
-                    </button>
+                    {showDeleted ? (
+                      <button
+                        onClick={() => handleRestore(row)}
+                        disabled={deletingPk === pk}
+                        style={{ fontSize: 11, fontWeight: 600, color: '#0F766E', background: 'transparent', border: '1px solid #99F6E4', borderRadius: 6, padding: '4px 10px', cursor: deletingPk === pk ? 'not-allowed' : 'pointer', opacity: deletingPk === pk ? 0.6 : 1 }}
+                      >
+                        {deletingPk === pk ? '…' : t.adminDb.restoreRow}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => { setModalError(null); setModal({ mode: 'edit', row }) }}
+                          style={{ fontSize: 11, fontWeight: 600, color: '#1E63C4', background: 'transparent', border: '1px solid #BFDBFE', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', marginRight: 6 }}
+                        >
+                          {t.adminDb.editRow}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(row)}
+                          disabled={deletingPk === pk}
+                          style={{ fontSize: 11, fontWeight: 600, color: '#B91C1C', background: 'transparent', border: '1px solid #FECACA', borderRadius: 6, padding: '4px 10px', cursor: deletingPk === pk ? 'not-allowed' : 'pointer', opacity: deletingPk === pk ? 0.6 : 1 }}
+                        >
+                          {deletingPk === pk ? '…' : t.adminDb.deleteRow}
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               )

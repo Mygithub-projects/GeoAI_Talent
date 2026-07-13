@@ -24,6 +24,7 @@ export default async function DashboardPage() {
   const { data: skillsData } = await supabase
     .from('skills_subjects')
     .select('item_id, type, name_en, name_bm')
+    .is('deleted_at', null)
     .order('type')
     .order('name_en')
 

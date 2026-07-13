@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
-import { Marker, Tooltip, Popup } from 'react-leaflet'
+import { useMemo, useState } from 'react'
+import { Marker, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { localizeSkillName } from './SkillCheckboxFilter'
@@ -50,9 +50,11 @@ function getInitials(name: string | null | undefined): string {
     .toUpperCase()
 }
 
-function getPinIcon(name: string): L.DivIcon {
+// Default fill is brand teal; Phase 8A's talent view passes a
+// per-district colour instead (see src/lib/districtColors.ts).
+function getPinIcon(name: string, color = '#12B5AC'): L.DivIcon {
   const initials = getInitials(name)
-  const key = `init:${initials}`
+  const key = `init:${initials}:${color}`
   if (!iconCache.has(key)) {
     iconCache.set(
       key,
@@ -65,13 +67,13 @@ function getPinIcon(name: string): L.DivIcon {
           <div style="position:relative;width:22px;height:30px;filter:drop-shadow(0 2px 3px rgba(14,47,87,0.30))">
             <svg width="22" height="30" viewBox="0 0 22 30" xmlns="http://www.w3.org/2000/svg">
               <path d="M11 0C4.925 0 0 4.925 0 11c0 8.25 11 19 11 19S22 19.25 22 11C22 4.925 17.075 0 11 0z"
-                    fill="#12B5AC" stroke="#0E2F57" stroke-width="1.2"/>
+                    fill="${color}" stroke="#0E2F57" stroke-width="1.2"/>
               <circle cx="11" cy="10.5" r="6" fill="white" opacity="0.92"/>
             </svg>
             <div style="
               position:absolute;top:4px;left:0;width:22px;
               text-align:center;font-size:7px;font-weight:800;
-              color:#12B5AC;letter-spacing:0.3px;pointer-events:none;
+              color:${color};letter-spacing:0.3px;pointer-events:none;
               font-family:'Inter',system-ui,sans-serif;line-height:1
             ">${initials}</div>
           </div>
@@ -119,30 +121,62 @@ function getRankIcon(rank: number): L.DivIcon {
 
 interface TrainerDotsProps {
   trainers: TrainerPoint[]
+  // Phase 8A (optional, additive) — notify the page when a pin is clicked
+  // (the popup still opens as before; this just mirrors the selection).
+  onSelect?: (trainerId: string) => void
+  // Phase 8A (optional, additive) — per-trainer pin colour (e.g. by PPD
+  // district). Rank icons (Mode B recommendations) are unaffected.
+  pinColor?: (t: TrainerPoint) => string
 }
 
-export function TrainerDots({ trainers }: TrainerDotsProps) {
+// Mounting every marker at once makes the zoom animation and the
+// heatmap↔pins flip visibly stutter on large sets (the statewide /talent
+// view holds ~1,000 trainers, each with a tooltip + full popup subtree).
+// Above the cap, only markers inside the padded viewport are mounted;
+// the rest mount as the map pans/zooms (moveend fires after both).
+const VIEWPORT_CULL_THRESHOLD = 300
+const VIEWPORT_PAD = 0.5
+
+function useViewportCull(trainers: TrainerPoint[]): TrainerPoint[] {
+  const map = useMap()
+  const [viewEpoch, setViewEpoch] = useState(0)
+  useMapEvents({ moveend: () => setViewEpoch(e => e + 1) })
+  return useMemo(() => {
+    if (trainers.length <= VIEWPORT_CULL_THRESHOLD) return trainers
+    void viewEpoch  // re-cull whenever the view settles
+    const bounds = map.getBounds().pad(VIEWPORT_PAD)
+    return trainers.filter(t => bounds.contains(L.latLng(t.lat, t.lng)))
+  }, [trainers, map, viewEpoch])
+}
+
+export function TrainerDots({ trainers, onSelect, pinColor }: TrainerDotsProps) {
   const { locale } = useLanguage()
+  const culled = useViewportCull(trainers)
 
   const localize = (name: string) => localizeSkillName(name, locale)
 
-  const markers = useMemo(() =>
-    trainers
-      .filter(t => t.trainer_name != null)
+  const markers = useMemo(() => {
+    const seen = new Set<string>()
+    return culled
+      .filter(t => {
+        if (t.trainer_name == null || seen.has(t.trainer_id)) return false
+        seen.add(t.trainer_id)
+        return true
+      })
       .map(t => ({
         ...t,
-        icon: t.rank != null ? getRankIcon(t.rank) : getPinIcon(t.trainer_name),
-      })),
-    [trainers]
-  )
+        icon: t.rank != null ? getRankIcon(t.rank) : getPinIcon(t.trainer_name, pinColor?.(t)),
+      }))
+  }, [culled, pinColor])
 
   return (
     <>
-      {markers.map((t, i) => (
+      {markers.map(t => (
         <Marker
-          key={`${t.trainer_id}-${i}`}
+          key={t.trainer_id}
           position={[t.lat, t.lng]}
           icon={t.icon}
+          eventHandlers={onSelect ? { click: () => onSelect(t.trainer_id) } : undefined}
         >
           {/* Quick hover preview */}
           <Tooltip direction="top" offset={[0, -32]} opacity={0.95}>

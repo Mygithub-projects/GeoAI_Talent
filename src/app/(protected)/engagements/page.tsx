@@ -50,10 +50,12 @@ export default async function EngagementsPage({
     engagements.map(e => e.created_by as string | null).filter(Boolean) as string[]
   )]
   const { data: creators } = creatorIds.length > 0
-    ? await admin.from('profiles').select('user_id, full_name').in('user_id', creatorIds)
+    ? await admin.from('profiles').select('user_id, full_name, ppd_district').in('user_id', creatorIds)
     : { data: [] }
   const creatorMap = Object.fromEntries(
-    (creators ?? []).map((p: { user_id: string; full_name: string | null }) => [p.user_id, p.full_name])
+    (creators ?? []).map((p: { user_id: string; full_name: string | null; ppd_district: string | null }) =>
+      [p.user_id, { full_name: p.full_name, ppd_district: p.ppd_district }]
+    )
   )
 
   // 2. Per-trainer invite rows
@@ -126,7 +128,8 @@ export default async function EngagementsPage({
       trainers_needed:    (e.trainers_needed as number | null) ?? 1,
       workflow_status:    e.workflow_status as string,
       created_at:         e.created_at as string,
-      creator_name:       uid ? creatorMap[uid] ?? null : null,
+      creator_name:       uid ? creatorMap[uid]?.full_name ?? null : null,
+      creator_district:   uid ? creatorMap[uid]?.ppd_district ?? null : null,
       trainers,
       confirmedCount:     trainers.filter(t => t.status === 'Confirmed').length,
     }

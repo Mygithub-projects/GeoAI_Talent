@@ -85,6 +85,36 @@ export async function POST(request: Request) {
       .from('profiles')
       .update({ ppd_district: ppdDistrict })
       .eq('user_id', data.user.id)
+
+    // Phase 8: alert every active admin in-app that a new registration is
+    // awaiting approval (allowlisted sign-ups activate instantly — no alert
+    // needed). Best-effort — a failure must never break registration.
+    try {
+      const { data: newProfile } = await adminClient
+        .from('profiles')
+        .select('status')
+        .eq('user_id', data.user.id)
+        .single()
+
+      if (newProfile?.status === 'pending') {
+        const { data: admins } = await adminClient
+          .from('profiles')
+          .select('user_id')
+          .eq('role', 'admin')
+          .eq('status', 'active')
+
+        if (admins?.length) {
+          await adminClient.from('notifications').insert(admins.map(a => ({
+            user_id:    a.user_id,
+            type:       'user_pending_approval',
+            message_en: `New registration awaiting approval: ${fullName} (${email}), district ${ppdDistrict}.`,
+            message_bm: `Pendaftaran baharu menunggu kelulusan: ${fullName} (${email}), daerah ${ppdDistrict}.`,
+          })))
+        }
+      }
+    } catch (err) {
+      console.error('[register] admin notification failed:', err)
+    }
   }
 
   return NextResponse.json({ success: true })

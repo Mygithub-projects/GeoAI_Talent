@@ -135,8 +135,10 @@ export async function GET(req: NextRequest, ctx: Ctx) {
   const page     = Math.max(1, parseInt(sp.get('page') ?? '1', 10) || 1)
   const pageSize = Math.min(PAGE_SIZE_MAX, Math.max(1, parseInt(sp.get('pageSize') ?? '25', 10) || 25))
   const q        = (sp.get('q') ?? '').trim()
+  const showDeleted = def.softDelete && sp.get('deleted') === '1'
 
   const selectCols = [def.primaryKey, ...def.columns.map(c => c.name).filter(n => n !== def.primaryKey)]
+  if (def.softDelete) selectCols.push('deleted_at')
   const admin = createAdminClient()
 
   let query = admin
@@ -145,6 +147,9 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     .order(def.orderBy, { ascending: true })
     .range((page - 1) * pageSize, page * pageSize - 1)
 
+  if (def.softDelete) {
+    query = showDeleted ? query.not('deleted_at', 'is', null) : query.is('deleted_at', null)
+  }
   if (q) query = query.ilike(def.searchColumn, `%${q.replace(/[%_]/g, '\\$&')}%`)
 
   const { data, count, error } = await query
@@ -194,11 +199,38 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const def = await resolveTable(ctx)
   if (!def) return NextResponse.json({ error: 'Unknown table' }, { status: 404 })
 
-  let body: { pk?: unknown; values?: Record<string, unknown> }
+  let body: { pk?: unknown; values?: Record<string, unknown>; restore?: boolean }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
-  if (body.pk === undefined || body.pk === null || !body.values || typeof body.values !== 'object') {
+  if (body.pk === undefined || body.pk === null) {
+    return NextResponse.json({ error: 'pk is required' }, { status: 400 })
+  }
+
+  // Restore a soft-deleted row (clears deleted_at) — no values needed.
+  if (body.restore === true) {
+    if (!def.softDelete) {
+      return NextResponse.json({ error: `Table "${def.name}" does not support restore` }, { status: 400 })
+    }
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from(def.name)
+      .update({ deleted_at: null })
+      .eq(def.primaryKey, body.pk)
+      .not('deleted_at', 'is', null)
+      .select()
+
+    if (error) {
+      const f = friendlyDbError(error)
+      return NextResponse.json({ error: f.message }, { status: f.status })
+    }
+    if (!data?.length) return NextResponse.json({ error: 'Row not found (or not deleted)' }, { status: 404 })
+
+    await writeAudit(admin, auth.user.id, auth.profile?.full_name, 'admin.table_restore', def.name, body.pk, { restored_row: data[0] })
+    return NextResponse.json({ success: true, row: data[0] })
+  }
+
+  if (!body.values || typeof body.values !== 'object') {
     return NextResponse.json({ error: 'pk and values are required' }, { status: 400 })
   }
 
@@ -232,7 +264,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ success: true, row: data[0] })
 }
 
-// ── DELETE: delete one row by primary key ────────────────────────
+// ── DELETE: soft-delete (registry tables) or hard-delete ─────────
+// Registry tables (softDelete in adminTables.ts) get deleted_at set —
+// the row disappears from the app but stays restorable and keeps
+// historical engagements intact. Config tables without the flag
+// (trainer_roles, travel_rates, knowledge_base) delete for real.
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   const auth = await requireAdmin()
   if ('error' in auth) return auth.error
@@ -248,11 +284,17 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   }
 
   const admin = createAdminClient()
-  const { data, error } = await admin
-    .from(def.name)
-    .delete()
-    .eq(def.primaryKey, body.pk)
-    .select()
+  const base = admin.from(def.name)
+  const { data, error } = def.softDelete
+    ? await base
+        .update({ deleted_at: new Date().toISOString() })
+        .eq(def.primaryKey, body.pk)
+        .is('deleted_at', null)
+        .select()
+    : await base
+        .delete()
+        .eq(def.primaryKey, body.pk)
+        .select()
 
   if (error) {
     const f = friendlyDbError(error)
@@ -260,6 +302,9 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   }
   if (!data?.length) return NextResponse.json({ error: 'Row not found' }, { status: 404 })
 
-  await writeAudit(admin, auth.user.id, auth.profile?.full_name, 'admin.table_delete', def.name, body.pk, { deleted_row: data[0] })
-  return NextResponse.json({ success: true })
+  await writeAudit(admin, auth.user.id, auth.profile?.full_name, 'admin.table_delete', def.name, body.pk, {
+    mode: def.softDelete ? 'soft' : 'hard',
+    deleted_row: data[0],
+  })
+  return NextResponse.json({ success: true, soft: !!def.softDelete })
 }

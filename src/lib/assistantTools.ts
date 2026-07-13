@@ -137,6 +137,7 @@ async function resolveTrainer(admin: SupabaseClient, name: string) {
     .from('master_trainers')
     .select('trainer_id, trainer_name, ppd_district')
     .ilike('trainer_name', `%${name.trim()}%`)
+    .is('deleted_at', null)
     .limit(6)
   return data ?? []
 }
@@ -168,6 +169,7 @@ export async function executeTool(
           .from('skills_subjects')
           .select('item_id, name_en, name_bm')
           .or(`name_en.ilike.%${skill}%,name_bm.ilike.%${skill}%`)
+          .is('deleted_at', null)
           .limit(10)
         if (!items || items.length === 0) {
           return { result: JSON.stringify({ found: false, note: `No skill or subject matches "${skill}". Tell the user, and optionally list a few valid options by searching the knowledge base.` }) }
@@ -177,6 +179,7 @@ export async function executeTool(
           .from('trainer_skills')
           .select('trainer_id')
           .in('item_id', items.map(i => i.item_id))
+          .is('deleted_at', null)
         trainerIds = [...new Set((links ?? []).map(l => l.trainer_id as string))]
         if (trainerIds.length === 0) {
           return { result: JSON.stringify({ found: false, matched_skills: matchedItems, count: 0 }) }
@@ -186,6 +189,7 @@ export async function executeTool(
       let query = ctx.admin
         .from('master_trainers')
         .select('trainer_id, trainer_name, ppd_district', { count: 'exact' })
+        .is('deleted_at', null)
       if (trainerIds) query = query.in('trainer_id', trainerIds)
       if (district)   query = query.ilike('ppd_district', `%${district}%`)
       const { data: trainers, count } = await query.order('trainer_name').limit(10)

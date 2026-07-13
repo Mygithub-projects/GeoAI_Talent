@@ -37,6 +37,15 @@ export async function proxy(request: NextRequest) {
   // Allow auth callback through unconditionally
   if (pathname.startsWith('/auth/')) return response
 
+  // Public trainer-facing pages: trainers are not app users — the signed
+  // single-use token in the URL is the authentication. Pass through for
+  // everyone (a logged-in coordinator opening one of these links must
+  // not be bounced to /dashboard either).
+  //   /feedback              — Phase 9 post-workshop feedback form
+  //   /invitations/confirm   — accept/decline confirmation step (2026-07-13)
+  //   /invitations/responded — response result page
+  if (pathname === '/feedback' || pathname.startsWith('/invitations/')) return response
+
   // API routes handle their own auth (return JSON 401, not redirects)
   if (pathname.startsWith('/api/')) return response
 

@@ -28,6 +28,7 @@ export interface WorkshopRow {
   workflow_status:    string
   created_at:         string
   creator_name:       string | null
+  creator_district:   string | null
   trainers:           TrainerInviteRow[]
   confirmedCount:     number
 }
@@ -156,6 +157,10 @@ const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
   'user.approve':        { bg: '#DBEAFE', text: '#1E40AF' },
   'user.suspend':        { bg: '#FEF3C7', text: '#92400E' },
   'user.role_change':    { bg: '#E0E7FF', text: '#3730A3' },
+  'user.create':         { bg: '#DBEAFE', text: '#1E40AF' },
+  'user.reactivate':     { bg: '#CCFBF1', text: '#0F766E' },
+  'user.delete':         { bg: '#FEE2E2', text: '#B91C1C' },
+  'admin.table_restore': { bg: '#CCFBF1', text: '#0F766E' },
 }
 
 function ActionChip({ action }: { action: string }) {
@@ -311,6 +316,7 @@ function WorkshopsTable({
     t.backlog.thProgress,
     t.backlog.thStatus,
     t.backlog.thBy,
+    t.backlog.thDistrict,
     t.backlog.thWhen,
     t.backlog.thActions,
   ]
@@ -380,6 +386,9 @@ function WorkshopsTable({
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                     <span style={{ color: '#475569' }}>{w.creator_name ?? '—'}</span>
+                  </td>
+                  <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
+                    <span style={{ color: '#64748B', fontSize: 11 }}>{w.creator_district ?? '—'}</span>
                   </td>
                   <td style={{ padding: '10px 14px', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                     <span style={{ color: '#94A3B8', fontSize: 11 }}>{relTime(w.created_at, rel)}</span><br />
@@ -657,7 +666,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
         }
       }
       if (q) {
-        const haystack = [w.training_title, w.dynamic_venue_name, w.creator_name, ...w.trainers.map(t => t.trainer_name)]
+        const haystack = [w.training_title, w.dynamic_venue_name, w.creator_name, w.creator_district, ...w.trainers.map(t => t.trainer_name)]
           .join(' ').toLowerCase()
         if (!haystack.includes(q)) return false
       }

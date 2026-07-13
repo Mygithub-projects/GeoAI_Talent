@@ -254,7 +254,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   return (
     <div style={{ padding: '24px 28px', maxWidth: 1180, margin: '0 auto', fontFamily: "'Inter', system-ui, sans-serif" }}>
       <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0E2F57', margin: '0 0 2px' }}>{t.calendar.title}</h1>
-      <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 16px' }}>{t.calendar.subtitle}</p>
+      <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 16px' }}>{isAdmin ? t.calendar.subtitle : t.calendar.subtitleUser}</p>
 
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>

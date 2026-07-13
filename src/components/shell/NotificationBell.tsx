@@ -116,7 +116,10 @@ export function NotificationBell() {
                     <div className="flex items-start gap-2">
                       <span
                         className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-                          n.type === 'trainer_accepted' ? 'bg-teal' : n.type === 'trainer_declined' ? 'bg-red-500' : 'bg-royal-blue'
+                          n.type === 'trainer_accepted' || n.type === 'account_approved' ? 'bg-teal'
+                            : n.type === 'trainer_declined' ? 'bg-red-500'
+                            : n.type === 'user_pending_approval' ? 'bg-amber'
+                            : 'bg-royal-blue'
                         }`}
                         aria-hidden
                       />

@@ -34,12 +34,20 @@ export interface AdminTableDef {
   searchColumn: string
   orderBy:      string
   columns:      AdminColumnDef[]
+  /**
+   * true = the table has a deleted_at column (migration 024): DELETE
+   * sets deleted_at instead of removing the row, the list hides
+   * deleted rows by default, and a deleted row can be restored.
+   * Registry data (trainers, schools, taxonomy) must never be
+   * hard-deleted — it may be referenced by historical engagements.
+   */
+  softDelete?:  boolean
 }
 
 export const ADMIN_TABLES: Record<string, AdminTableDef> = {
   schools: {
     name: 'schools', labelEn: 'Schools', labelBm: 'Sekolah',
-    primaryKey: 'school_code', pkAuto: false,
+    primaryKey: 'school_code', pkAuto: false, softDelete: true,
     searchColumn: 'school_name', orderBy: 'school_code',
     columns: [
       { name: 'school_code',        labelEn: 'School code',        labelBm: 'Kod sekolah',        type: 'text',    required: true  },
@@ -58,7 +66,7 @@ export const ADMIN_TABLES: Record<string, AdminTableDef> = {
   },
   master_trainers: {
     name: 'master_trainers', labelEn: 'Master Trainers', labelBm: 'Jurulatih Utama',
-    primaryKey: 'trainer_id', pkAuto: false,
+    primaryKey: 'trainer_id', pkAuto: false, softDelete: true,
     searchColumn: 'trainer_name', orderBy: 'trainer_id',
     columns: [
       { name: 'trainer_id',              labelEn: 'Trainer ID',          labelBm: 'ID jurulatih',        type: 'text',   required: true  },
@@ -74,7 +82,7 @@ export const ADMIN_TABLES: Record<string, AdminTableDef> = {
   },
   skills_subjects: {
     name: 'skills_subjects', labelEn: 'Skills & Subjects', labelBm: 'Kemahiran & Subjek',
-    primaryKey: 'item_id', pkAuto: true,
+    primaryKey: 'item_id', pkAuto: true, softDelete: true,
     searchColumn: 'name_en', orderBy: 'item_id',
     columns: [
       { name: 'type',               labelEn: 'Type',               labelBm: 'Jenis',              type: 'select',  required: true, options: ['SKILL', 'SUBJECT'] },
@@ -87,7 +95,7 @@ export const ADMIN_TABLES: Record<string, AdminTableDef> = {
   },
   trainer_skills: {
     name: 'trainer_skills', labelEn: 'Trainer Skills (links)', labelBm: 'Kemahiran Jurulatih (pautan)',
-    primaryKey: 'id', pkAuto: true,
+    primaryKey: 'id', pkAuto: true, softDelete: true,
     searchColumn: 'trainer_id', orderBy: 'id',
     columns: [
       { name: 'trainer_id', labelEn: 'Trainer ID', labelBm: 'ID jurulatih', type: 'text',    required: true },

@@ -3,32 +3,50 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { verifySignedToken, hashToken } from '@/lib/tokenSigning'
 import { recomputeEngagementStatus } from '@/lib/engagementRollup'
 import { sendEmail, resolveVenueName } from '@/lib/email'
-import { buildResponseAckEmail } from '@/lib/emailContent'
+import { buildResponseAckEmail, buildTrainerResponseNotifyEmail } from '@/lib/emailContent'
 
-// Public — hit directly by a trainer clicking an accept/decline link
-// in their invitation email. No app session exists, so every read/
-// write here goes through the service-role admin client.
-export async function GET(req: NextRequest) {
-  const token = req.nextUrl.searchParams.get('token')
-  const redirectTo = (result: string) =>
-    NextResponse.redirect(new URL(`/invitations/responded?result=${result}`, req.url))
+// Public — reached from the accept/decline links in invitation emails.
+// No app session exists, so every read/write goes through the
+// service-role admin client.
+//
+// 2026-07-13: split into a read-only GET + a mutating POST. Email
+// security scanners (Gmail/Yahoo/corporate antivirus) prefetch GET
+// links in emails, which auto-accepted/declined invitations WITHOUT
+// the trainer's action. GET now only validates the token and forwards
+// to the public confirmation page (/invitations/confirm); the actual
+// state change happens exclusively on the POST below, which only a
+// real form submission from that page triggers — scanners never
+// submit forms.
 
-  if (!token || !verifySignedToken(token)) {
-    return redirectTo('invalid')
-  }
+type AdminClient = ReturnType<typeof createAdminClient>
 
-  const admin = createAdminClient()
-  const tokenHash = hashToken(token)
+interface TokenRow {
+  token_id:      string
+  engagement_id: string
+  trainer_id:    string
+  action_scope:  string
+  expires_at:    string
+  used_at:       string | null
+}
+
+type Validation =
+  | { ok: true; tokenRow: TokenRow; engTrainerId: string }
+  | { ok: false; result: 'invalid' | 'already_used' | 'expired' }
+
+// Read-only checks shared by GET (gate to the confirm page) and POST
+// (re-checked immediately before mutating — never trust the gap).
+async function validateToken(admin: AdminClient, token: string | null): Promise<Validation> {
+  if (!token || !verifySignedToken(token)) return { ok: false, result: 'invalid' }
 
   const { data: tokenRow } = await admin
     .from('invitation_tokens')
     .select('token_id, engagement_id, trainer_id, action_scope, expires_at, used_at')
-    .eq('token_hash', tokenHash)
+    .eq('token_hash', hashToken(token))
     .single()
 
-  if (!tokenRow) return redirectTo('invalid')
-  if (tokenRow.used_at) return redirectTo('already_used')
-  if (new Date(tokenRow.expires_at) < new Date()) return redirectTo('expired')
+  if (!tokenRow) return { ok: false, result: 'invalid' }
+  if (tokenRow.used_at) return { ok: false, result: 'already_used' }
+  if (new Date(tokenRow.expires_at) < new Date()) return { ok: false, result: 'expired' }
 
   const { data: engTrainer } = await admin
     .from('engagement_trainers')
@@ -37,15 +55,44 @@ export async function GET(req: NextRequest) {
     .eq('trainer_id', tokenRow.trainer_id)
     .single()
 
-  if (!engTrainer) return redirectTo('invalid')
-  if (engTrainer.status !== 'Pending Invite') return redirectTo('already_used')
+  if (!engTrainer) return { ok: false, result: 'invalid' }
+  if (engTrainer.status !== 'Pending Invite') return { ok: false, result: 'already_used' }
+
+  return { ok: true, tokenRow: tokenRow as TokenRow, engTrainerId: engTrainer.id }
+}
+
+// ── GET: validate only, then show the confirmation page ─────────
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get('token')
+  const admin = createAdminClient()
+
+  const v = await validateToken(admin, token)
+  if (!v.ok) {
+    return NextResponse.redirect(new URL(`/invitations/responded?result=${v.result}`, req.url))
+  }
+  return NextResponse.redirect(new URL(`/invitations/confirm?token=${encodeURIComponent(token!)}`, req.url))
+}
+
+// ── POST: the trainer pressed Confirm — record the response ─────
+export async function POST(req: NextRequest) {
+  const redirectTo = (result: string) =>
+    // 303 so the browser follows with a GET (this is a form POST)
+    NextResponse.redirect(new URL(`/invitations/responded?result=${result}`, req.url), 303)
+
+  const form = await req.formData().catch(() => null)
+  const token = (form?.get('token') ?? null) as string | null
+
+  const admin = createAdminClient()
+  const v = await validateToken(admin, token)
+  if (!v.ok) return redirectTo(v.result)
+  const { tokenRow, engTrainerId } = v
 
   const newStatus = tokenRow.action_scope === 'accept' ? 'Confirmed' : 'Declined'
 
   await admin
     .from('engagement_trainers')
     .update({ status: newStatus, responded_at: new Date().toISOString() })
-    .eq('id', engTrainer.id)
+    .eq('id', engTrainerId)
 
   // Mark this token used, and invalidate its sibling (accept <-> decline)
   // so neither link can be replayed after the trainer has responded.
@@ -133,6 +180,37 @@ export async function GET(req: NextRequest) {
     }
   } catch (err) {
     console.error('[respond] notification insert failed:', err)
+  }
+
+  // Phase 8: email twin of the bell notification — tell the coordinator by
+  // email too, so a decline is never missed just because they were offline.
+  // Best-effort, same rule as everything else in this route.
+  try {
+    if (engagement?.created_by) {
+      const { data: creator } = await admin
+        .from('profiles')
+        .select('full_name, email')
+        .eq('user_id', engagement.created_by)
+        .single()
+      if (creator?.email) {
+        const venueName = await resolveVenueName(admin, engagement)
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+        const { subject, html } = buildTrainerResponseNotifyEmail({
+          lang:          'bm',  // matches the BM default of the other system emails
+          creatorName:   creator.full_name ?? '',
+          trainerName:   trainer?.trainer_name ?? 'Jurulatih',
+          accepted:      tokenRow.action_scope === 'accept',
+          trainingTitle: engagement.training_title ?? 'TBC',
+          venueName,
+          startDate:     engagement.start_date,
+          endDate:       engagement.end_date,
+          backlogUrl:    `${siteUrl}/engagements`,
+        })
+        await sendEmail({ to: process.env.TEST_INBOX_EMAIL || creator.email, subject, html })
+      }
+    }
+  } catch (err) {
+    console.error('[respond] coordinator email failed:', err)
   }
 
   return redirectTo(tokenRow.action_scope === 'accept' ? 'accepted' : 'declined')

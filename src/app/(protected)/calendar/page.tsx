@@ -4,10 +4,11 @@ import { CalendarClient } from './_components/CalendarClient'
 
 export const dynamic = 'force-dynamic'
 
-// Workshop calendar — month grid of all engagements, color-coded by
-// status, filterable by trainer. Visible to every active user (same
-// visibility rationale as the availability search). Data comes from
-// GET /api/calendar, which re-checks auth on every call.
+// Workshop calendar — month grid of engagements, color-coded by
+// status, filterable by trainer. Scoped like /engagements and /reports
+// (user decision 2026-07-12): admins see all workshops, non-admins
+// only the ones they created. Data comes from GET /api/calendar,
+// which re-checks auth and applies the scoping on every call.
 export default async function CalendarPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

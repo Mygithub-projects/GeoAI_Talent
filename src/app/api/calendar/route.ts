@@ -3,11 +3,12 @@ import { createClient }      from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // ── Workshop calendar feed ───────────────────────────────────────
-// Returns every non-Cancelled engagement whose dates overlap the
-// requested month, with per-trainer invite statuses. Visible to ALL
-// active users (matches what the availability search already reveals
-// implicitly — confirmed bookings are why trainers drop out of
-// search results). Reads via the admin client after the auth check.
+// Returns non-Cancelled engagements whose dates overlap the requested
+// month, with per-trainer invite statuses. Scoped like /engagements
+// and /reports (user decision 2026-07-12, replacing the original
+// "visible to all" rule): admins see every workshop, non-admins only
+// the ones they created. Reads via the admin client after the auth
+// check, so this scoping is the actual access boundary.
 
 export interface CalendarTrainer {
   trainer_id:   string
@@ -35,12 +36,13 @@ export async function GET(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('status')
+    .select('status, role')
     .eq('user_id', user.id)
     .single()
   if (profile?.status !== 'active') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  const isAdmin = profile.role === 'admin'
 
   const sp    = req.nextUrl.searchParams
   const year  = parseInt(sp.get('year')  ?? '', 10)
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient()
 
   // Engagements overlapping the month (standard interval-overlap test)
-  const { data: engagements, error } = await admin
+  let engQuery = admin
     .from('training_engagements')
     .select('engagement_id, training_title, dynamic_venue_name, venue_school_code, start_date, end_date, workflow_status, trainers_needed, created_by')
     .neq('workflow_status', 'Cancelled')
@@ -67,6 +69,8 @@ export async function GET(req: NextRequest) {
     .gte('end_date',   monthStart)
     .order('start_date', { ascending: true })
     .limit(300)
+  if (!isAdmin) engQuery = engQuery.eq('created_by', user.id)
+  const { data: engagements, error } = await engQuery
 
   if (error) {
     console.error('[calendar] query error', error)

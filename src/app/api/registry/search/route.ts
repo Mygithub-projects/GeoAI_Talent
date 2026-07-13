@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     .ilike('school_name', `%${q}%`)
     .not('latitude', 'is', null)
     .not('longitude', 'is', null)
+    .is('deleted_at', null)
     .limit(5)
 
   if (error) {

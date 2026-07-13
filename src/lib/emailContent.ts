@@ -460,6 +460,263 @@ export function buildRescheduleEmail(p: RescheduleEmailParams): { subject: strin
   return { subject: strings.subject, html }
 }
 
+// ── Shared shell for the simple notification emails (Phase 8) ────
+// Same visual skeleton as the ack email: navy header, coloured title
+// bar, body paragraphs, optional details card, optional CTA button.
+
+interface SimpleEmailShellParams {
+  lang:         'en' | 'bm'
+  subject:      string
+  sectionTitle: string
+  barColor:     string
+  paragraphs:   string[]           // already-safe HTML strings
+  detailRows?:  Array<{ label: string; value: string; strong?: boolean }>
+  cta?:         { label: string; url: string }
+  footerLine2:  string
+}
+
+function buildSimpleEmail(p: SimpleEmailShellParams): { subject: string; html: string } {
+  const footerLine1 = p.lang === 'bm'
+    ? 'Emel ini dihantar bagi pihak Jabatan Pendidikan Negeri Sarawak.'
+    : 'This email was sent on behalf of Jabatan Pendidikan Negeri Sarawak.'
+
+  const detailsCard = p.detailRows?.length ? `
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+                   style="background:#F6F8FB;border:1px solid #E2E8F0;
+                          border-left:4px solid ${p.barColor};border-radius:8px;
+                          padding:0;margin-bottom:28px;">
+              <tr>
+                <td style="padding:16px 20px;">
+                  <table width="100%" cellpadding="4" cellspacing="0">
+                    ${p.detailRows.map((r, i) => `<tr>
+                      <td style="font-size:10px;color:#94A3B8;font-weight:700;text-transform:uppercase;
+                                 letter-spacing:.6px;width:110px;vertical-align:top;${i < p.detailRows!.length - 1 ? 'padding-bottom:10px;' : ''}">
+                        ${r.label}
+                      </td>
+                      <td style="font-size:${r.strong ? 14 : 13}px;color:${r.strong ? '#0E2F57' : '#334155'};${r.strong ? 'font-weight:700;' : ''}${i < p.detailRows!.length - 1 ? 'padding-bottom:10px;' : ''}">
+                        ${r.value}
+                      </td>
+                    </tr>`).join('')}
+                  </table>
+                </td>
+              </tr>
+            </table>` : ''
+
+  const ctaBlock = p.cta ? `
+            <table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
+              <tr>
+                <td>
+                  <a href="${p.cta.url}"
+                     style="display:inline-block;text-align:center;background:#12B5AC;color:#ffffff;
+                            text-decoration:none;font-size:14px;font-weight:700;
+                            padding:13px 28px;border-radius:8px;letter-spacing:.2px;">
+                    ${p.cta.label}
+                  </a>
+                </td>
+              </tr>
+            </table>` : ''
+
+  const html = `<!DOCTYPE html>
+<html lang="${p.lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${p.subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#F6F8FB;font-family:Arial,'Helvetica Neue',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+         style="background:#F6F8FB;padding:32px 16px;">
+    <tr><td align="center">
+
+      <table width="600" cellpadding="0" cellspacing="0" role="presentation"
+             style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.10);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#0E2F57;padding:28px 32px;text-align:center;">
+            <p style="color:rgba(255,255,255,.55);font-size:11px;letter-spacing:2px;
+                      text-transform:uppercase;margin:0 0 6px;">
+              Jabatan Pendidikan Negeri Sarawak
+            </p>
+            <h1 style="color:#ffffff;font-size:22px;font-weight:700;margin:0;letter-spacing:.5px;">
+              GeoAI Talent Agent
+            </h1>
+          </td>
+        </tr>
+
+        <!-- Title bar -->
+        <tr>
+          <td style="background:${p.barColor};padding:10px 32px;">
+            <p style="color:#ffffff;font-size:11px;font-weight:700;margin:0;letter-spacing:1px;">
+              ${p.sectionTitle}
+            </p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;padding:32px;">
+            ${p.paragraphs.map(para => `<p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 16px;">${para}</p>`).join('')}
+            ${detailsCard}
+            ${ctaBlock}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#F6F8FB;padding:20px 32px;
+                     border-top:1px solid #E2E8F0;text-align:center;">
+            <p style="color:#94A3B8;font-size:11px;line-height:1.7;margin:0 0 4px;">
+              ${footerLine1}
+            </p>
+            <p style="color:#CBD5E1;font-size:10px;margin:0;">
+              ${p.footerLine2}
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+    </td></tr>
+  </table>
+</body>
+</html>`
+
+  return { subject: p.subject, html }
+}
+
+// ── Account approved (Phase 8) ───────────────────────────────────
+// Sent to a user when an admin approves their pending registration.
+
+export interface AccountApprovedEmailParams {
+  lang:     'en' | 'bm'
+  fullName: string
+  role:     'admin' | 'user'
+  district: string | null
+  loginUrl: string
+}
+
+export function buildAccountApprovedEmail(p: AccountApprovedEmailParams): { subject: string; html: string } {
+  const isBm = p.lang === 'bm'
+  const roleLabel = p.role === 'admin'
+    ? (isBm ? 'Pentadbir' : 'Administrator')
+    : (isBm ? 'Pengguna Standard' : 'Standard User')
+
+  return buildSimpleEmail({
+    lang:         p.lang,
+    subject:      isBm ? 'Akaun Anda Telah Diluluskan — GeoAI Talent Agent' : 'Your Account Has Been Approved — GeoAI Talent Agent',
+    sectionTitle: isBm ? 'AKAUN DILULUSKAN' : 'ACCOUNT APPROVED',
+    barColor:     '#12B5AC',
+    paragraphs: [
+      escapeHtml(isBm ? `Tuan/Puan ${p.fullName},` : `Dear ${p.fullName},`),
+      isBm
+        ? 'Pendaftaran anda telah <strong>diluluskan</strong>. Anda kini boleh log masuk ke GeoAI Talent Agent menggunakan e-mel dan kata laluan yang anda daftarkan.'
+        : 'Your registration has been <strong>approved</strong>. You can now sign in to the GeoAI Talent Agent using the email and password you registered with.',
+    ],
+    detailRows: [
+      { label: isBm ? 'Peranan' : 'Role', value: escapeHtml(roleLabel), strong: true },
+      ...(p.district ? [{ label: isBm ? 'Daerah PPD' : 'PPD district', value: escapeHtml(p.district) }] : []),
+    ],
+    cta: { label: isBm ? 'Log Masuk' : 'Sign In', url: p.loginUrl },
+    footerLine2: isBm
+      ? 'Emel ini dijana secara automatik — tiada balasan diperlukan.'
+      : 'This is an automated notification — no reply is needed.',
+  })
+}
+
+// ── Trainer response notification to the coordinator (Phase 8) ───
+// Sent to the engagement creator when a trainer clicks Accept or
+// Decline — the email twin of the in-app bell notification.
+
+export interface TrainerResponseNotifyEmailParams {
+  lang:          'en' | 'bm'
+  creatorName:   string
+  trainerName:   string
+  accepted:      boolean
+  trainingTitle: string
+  venueName:     string
+  startDate:     string | null
+  endDate:       string | null
+  backlogUrl:    string
+}
+
+export function buildTrainerResponseNotifyEmail(p: TrainerResponseNotifyEmailParams): { subject: string; html: string } {
+  const isBm = p.lang === 'bm'
+  const dateRange = formatDateRange(p.startDate, p.endDate, p.lang)
+  const statusColor = p.accepted ? '#12B5AC' : '#15233A'
+
+  return buildSimpleEmail({
+    lang:         p.lang,
+    subject:      isBm
+      ? `${p.accepted ? 'Jurulatih Menerima' : 'Jurulatih Menolak'}: ${p.trainingTitle}`
+      : `${p.accepted ? 'Trainer Accepted' : 'Trainer Declined'}: ${p.trainingTitle}`,
+    sectionTitle: isBm
+      ? (p.accepted ? 'JEMPUTAN DITERIMA' : 'JEMPUTAN DITOLAK')
+      : (p.accepted ? 'INVITATION ACCEPTED' : 'INVITATION DECLINED'),
+    barColor:     statusColor,
+    paragraphs: [
+      escapeHtml(isBm ? `Tuan/Puan ${p.creatorName},` : `Dear ${p.creatorName},`),
+      isBm
+        ? `<strong>${escapeHtml(p.trainerName)}</strong> telah <strong>${p.accepted ? 'MENERIMA' : 'MENOLAK'}</strong> jemputan bagi program di bawah.`
+        : `<strong>${escapeHtml(p.trainerName)}</strong> has <strong>${p.accepted ? 'ACCEPTED' : 'DECLINED'}</strong> the invitation for the programme below.`,
+    ],
+    detailRows: [
+      { label: isBm ? 'Program' : 'Programme', value: escapeHtml(p.trainingTitle), strong: true },
+      { label: isBm ? 'Tempat' : 'Venue',      value: escapeHtml(p.venueName) },
+      { label: isBm ? 'Tarikh' : 'Dates',      value: dateRange },
+    ],
+    cta: { label: isBm ? 'Lihat Papan Bengkel' : 'View Engagements Board', url: p.backlogUrl },
+    footerLine2: isBm
+      ? 'Emel ini dijana secara automatik — tiada balasan diperlukan.'
+      : 'This is an automated notification — no reply is needed.',
+  })
+}
+
+// ── Post-workshop feedback request (Phase 9) ─────────────────────
+// Sent automatically by the daily cron once a workshop completes
+// (end_date passed, workflow Confirmed) — asks each confirmed trainer
+// to fill in the public token-linked feedback form within 14 days.
+
+export interface FeedbackRequestEmailParams {
+  lang:          'en' | 'bm'
+  trainerName:   string
+  trainingTitle: string
+  venueName:     string
+  startDate:     string | null    // ISO date YYYY-MM-DD
+  endDate:       string | null
+  deadlineDate:  string           // ISO date YYYY-MM-DD — stated fill-by deadline (sent + 14 days)
+  feedbackUrl:   string
+}
+
+export function buildFeedbackRequestEmail(p: FeedbackRequestEmailParams): { subject: string; html: string } {
+  const isBm = p.lang === 'bm'
+  const dateRange = formatDateRange(p.startDate, p.endDate, p.lang)
+  const deadline  = formatDate(p.deadlineDate, p.lang)
+
+  return buildSimpleEmail({
+    lang:         p.lang,
+    subject:      isBm ? `Maklum Balas Bengkel: ${p.trainingTitle}` : `Workshop Feedback: ${p.trainingTitle}`,
+    sectionTitle: isBm ? 'PERMINTAAN MAKLUM BALAS' : 'FEEDBACK REQUEST',
+    barColor:     '#1E63C4',   // Royal Blue — distinct from teal (accept) / amber (reschedule)
+    paragraphs: [
+      escapeHtml(isBm ? `Tuan/Puan ${p.trainerName},` : `Dear ${p.trainerName},`),
+      isBm
+        ? 'Terima kasih kerana berkhidmat sebagai Jurulatih Utama bagi program di bawah. Kami amat menghargai jika anda dapat meluangkan beberapa minit untuk melengkapkan borang maklum balas ringkas mengenai pengalaman anda.'
+        : 'Thank you for serving as Master Trainer for the programme below. We would greatly appreciate a few minutes of your time to complete a short feedback form about your experience.',
+    ],
+    detailRows: [
+      { label: isBm ? 'Program' : 'Programme',        value: escapeHtml(p.trainingTitle), strong: true },
+      { label: isBm ? 'Tempat' : 'Venue',             value: escapeHtml(p.venueName) },
+      { label: isBm ? 'Tarikh' : 'Dates',             value: dateRange },
+      { label: isBm ? 'Tarikh Akhir' : 'Deadline',    value: `<strong>${deadline}</strong>` },
+    ],
+    cta: { label: isBm ? 'Isi Borang Maklum Balas' : 'Complete Feedback Form', url: p.feedbackUrl },
+    footerLine2: isBm
+      ? `Sila lengkapkan borang ini dalam tempoh 14 hari (sebelum ${deadline}). Emel ini dijana secara automatik — tiada balasan diperlukan.`
+      : `Please complete this form within 14 days (by ${deadline}). This is an automated notification — no reply is needed.`,
+  })
+}
+
 export function buildInvitationEmail(p: InvitationEmailParams): { subject: string; html: string } {
   const isBm = p.lang === 'bm'
 

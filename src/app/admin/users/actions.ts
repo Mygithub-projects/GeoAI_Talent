@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmail } from '@/lib/email'
+import { buildAccountApprovedEmail } from '@/lib/emailContent'
 
 // Verify the calling user is an active admin
 async function requireAdmin() {
@@ -12,14 +14,33 @@ async function requireAdmin() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, status')
+    .select('role, status, full_name')
     .eq('user_id', user.id)
     .single()
 
   if (profile?.role !== 'admin' || profile?.status !== 'active') {
     throw new Error('Forbidden: admin access required')
   }
-  return { user, supabase }
+  return { user, profile, supabase }
+}
+
+// Every user-management action is a sensitive action → audit_logs row
+// (same shape as the engagement/table-console writes).
+async function writeUserAudit(
+  adminClient: ReturnType<typeof createAdminClient>,
+  actorId: string,
+  actorName: string | null | undefined,
+  action: string,
+  targetUserId: string,
+  payload: Record<string, unknown>,
+) {
+  await adminClient.from('audit_logs').insert({
+    actor:        actorId,
+    action,
+    entity_type:  'profiles',
+    entity_id:    targetUserId,
+    payload_json: { ...payload, actor_name: actorName ?? null },
+  })
 }
 
 // Updates the auth.users email (the actual login credential) via the Admin API
@@ -69,7 +90,7 @@ export async function approveUser(
   role: 'admin' | 'user',
   district: string | null
 ) {
-  await requireAdmin()
+  const { user: actor, profile: actorProfile } = await requireAdmin()
 
   if (role === 'user' && !district) {
     throw new Error('Standard users must be assigned a district.')
@@ -79,7 +100,7 @@ export async function approveUser(
 
   const { data: current } = await adminClient
     .from('profiles')
-    .select('email')
+    .select('email, status')
     .eq('user_id', userId)
     .single()
   if (current) await syncAuthEmail(adminClient, userId, email, current.email)
@@ -96,6 +117,39 @@ export async function approveUser(
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+
+  await writeUserAudit(adminClient, actor.id, actorProfile?.full_name, 'user.approve', userId, {
+    full_name: fullName, email, role, district, previous_status: current?.status ?? null,
+  })
+
+  // A true approval is pending → active; re-running the modal on an
+  // already-active user is just an edit — no notification/email then.
+  if (current?.status === 'pending') {
+    // In-app notification (best-effort — never fails the approval)
+    try {
+      await adminClient.from('notifications').insert({
+        user_id:    userId,
+        type:       'account_approved',
+        message_en: `Your account has been approved. Role: ${role === 'admin' ? 'Administrator' : 'Standard User'}${district ? `, district: ${district}` : ''}.`,
+        message_bm: `Akaun anda telah diluluskan. Peranan: ${role === 'admin' ? 'Pentadbir' : 'Pengguna Standard'}${district ? `, daerah: ${district}` : ''}.`,
+      })
+    } catch (e) {
+      console.error('[approveUser] notification insert failed', e)
+    }
+
+    // Approval email (best-effort). BM default, matching the trainer
+    // email convention; TEST_INBOX_EMAIL overrides like invite routes.
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+      const { subject, html } = buildAccountApprovedEmail({
+        lang: 'bm', fullName, role, district, loginUrl: `${siteUrl}/login`,
+      })
+      await sendEmail({ to: process.env.TEST_INBOX_EMAIL || email, subject, html })
+    } catch (e) {
+      console.error('[approveUser] approval email failed', e)
+    }
+  }
+
   revalidatePath('/admin/users')
 }
 
@@ -108,7 +162,7 @@ export async function createUserByAdmin(
   role: 'admin' | 'user',
   district: string | null
 ) {
-  await requireAdmin()
+  const { user: actor, profile: actorProfile } = await requireAdmin()
 
   if (role === 'user' && !district) {
     throw new Error('Standard users must be assigned a district.')
@@ -133,6 +187,11 @@ export async function createUserByAdmin(
     .eq('user_id', data.user.id)
 
   if (profileError) throw new Error(profileError.message)
+
+  await writeUserAudit(adminClient, actor.id, actorProfile?.full_name, 'user.create', data.user.id, {
+    full_name: fullName, email, role, district, method: 'admin_invite_email',
+  })
+
   revalidatePath('/admin/users')
 }
 
@@ -145,7 +204,7 @@ export async function changeUserRole(
   role: 'admin' | 'user',
   district: string | null
 ) {
-  await requireAdmin()
+  const { user: actor, profile: actorProfile } = await requireAdmin()
 
   if (role === 'user' && !district) {
     throw new Error('Standard users must be assigned a district.')
@@ -160,7 +219,7 @@ export async function changeUserRole(
 
   const { data: current } = await adminClient
     .from('profiles')
-    .select('email')
+    .select('email, full_name, role, ppd_district')
     .eq('user_id', userId)
     .single()
   if (current) await syncAuthEmail(adminClient, userId, email, current.email)
@@ -171,12 +230,18 @@ export async function changeUserRole(
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+
+  await writeUserAudit(adminClient, actor.id, actorProfile?.full_name, 'user.role_change', userId, {
+    full_name: fullName, email, role, district,
+    previous: current ? { full_name: current.full_name, email: current.email, role: current.role, district: current.ppd_district } : null,
+  })
+
   revalidatePath('/admin/users')
 }
 
 // Suspend an active user: blocks login, keeps all history intact, fully reversible.
 export async function suspendUser(userId: string) {
-  const { user } = await requireAdmin()
+  const { user, profile: actorProfile } = await requireAdmin()
   if (user.id === userId) throw new Error('You cannot suspend your own account.')
 
   const adminClient = createAdminClient()
@@ -188,12 +253,15 @@ export async function suspendUser(userId: string) {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+
+  await writeUserAudit(adminClient, user.id, actorProfile?.full_name, 'user.suspend', userId, {})
+
   revalidatePath('/admin/users')
 }
 
 // Reverse a suspension.
 export async function reactivateUser(userId: string) {
-  await requireAdmin()
+  const { user: actor, profile: actorProfile } = await requireAdmin()
 
   const adminClient = createAdminClient()
   const { error } = await adminClient
@@ -202,6 +270,9 @@ export async function reactivateUser(userId: string) {
     .eq('user_id', userId)
 
   if (error) throw new Error(error.message)
+
+  await writeUserAudit(adminClient, actor.id, actorProfile?.full_name, 'user.reactivate', userId, {})
+
   revalidatePath('/admin/users')
 }
 
@@ -211,7 +282,7 @@ export async function reactivateUser(userId: string) {
 // since training_engagements.created_by / engagement_trainers.invited_by have
 // no ON DELETE action and would otherwise block the whole delete anyway.
 export async function deleteUserAccount(userId: string) {
-  const { user } = await requireAdmin()
+  const { user, profile: actorProfile } = await requireAdmin()
   if (user.id === userId) throw new Error('You cannot delete your own account.')
 
   const adminClient = createAdminClient()
@@ -228,7 +299,21 @@ export async function deleteUserAccount(userId: string) {
     )
   }
 
+  // Capture identity for the audit trail before the row disappears
+  // (audit_logs.actor is SET NULL on delete, so the payload is the
+  // only place the deleted user's name/email survive).
+  const { data: target } = await adminClient
+    .from('profiles')
+    .select('full_name, email, role, ppd_district, status')
+    .eq('user_id', userId)
+    .single()
+
   const { error } = await adminClient.auth.admin.deleteUser(userId)
   if (error) throw new Error(error.message)
+
+  await writeUserAudit(adminClient, user.id, actorProfile?.full_name, 'user.delete', userId, {
+    deleted_profile: target ?? null,
+  })
+
   revalidatePath('/admin/users')
 }

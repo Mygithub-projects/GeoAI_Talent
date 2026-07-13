@@ -1,6 +1,7 @@
 import dynamic from 'next/dynamic'
 import type { TrainerPoint } from './TrainerDots'
 import type { PPDPoint } from './PPDPins'
+import type { DistrictStatPoint, DistrictStatLabels } from './DistrictStatPins'
 import type { FlyToTarget, FitBoundsTarget } from './MapInner'
 
 type HeatPoint = [number, number]
@@ -22,6 +23,11 @@ interface MapCanvasProps {
   onDropPin:     (lat: number, lng: number) => void
   onDrillDown:   (lat: number, lng: number, name: string) => void
   onZoomChange:  (zoom: number) => void
+  // Phase 8A (optional, additive) — talent-distribution extras
+  districtStats?:      DistrictStatPoint[]
+  districtStatLabels?: DistrictStatLabels
+  onTrainerSelect?:    (trainerId: string) => void
+  trainerPinColor?:    (t: TrainerPoint) => string
 }
 
 const MapInnerDynamic = dynamic(
