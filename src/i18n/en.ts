@@ -452,6 +452,7 @@ export interface Translations {
     confirmDeclineBtn: string
     confirmSubmitting: string
     confirmNote: string
+    closeNote: string
     labelProgramme: string
     labelVenue: string
     labelDates: string
@@ -1081,6 +1082,7 @@ export const en: Translations = {
     confirmDeclineBtn: '✘ Confirm — Decline invitation',
     confirmSubmitting: 'Recording your response…',
     confirmNote: 'Nothing is recorded until you press the button above.',
+    closeNote: 'You may now close this page.',
     labelProgramme: 'Programme',
     labelVenue: 'Venue',
     labelDates: 'Dates',

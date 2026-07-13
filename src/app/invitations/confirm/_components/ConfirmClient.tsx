@@ -6,7 +6,6 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 
@@ -36,10 +35,9 @@ export function ConfirmClient({ token, action, trainerName, trainingTitle, venue
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
+      {/* Trainers are not system users — the logo is deliberately not a link. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
-        <Link href="/" className="inline-block">
-          <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto cursor-pointer" />
-        </Link>
+        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
         <LanguageToggle />
       </div>
 

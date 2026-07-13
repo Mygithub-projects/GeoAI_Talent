@@ -3,7 +3,6 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { LanguageToggle } from '@/components/LanguageToggle'
 
@@ -34,10 +33,10 @@ function ResponseContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
+      {/* Trainers are not system users — the logo is NOT a link and there
+          is no "return to the app" affordance anywhere on this page. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
-        <Link href="/" className="inline-block">
-          <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto cursor-pointer" />
-        </Link>
+        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
         <LanguageToggle />
       </div>
 
@@ -54,11 +53,7 @@ function ResponseContent() {
             <p className="text-sm text-muted leading-relaxed">{message}</p>
           </div>
 
-          <div className="mt-6">
-            <Link href="/" className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-              Return to GEO‑TALENT AGENT
-            </Link>
-          </div>
+          <p className="text-xs text-muted">{t.invitationResponse.closeNote}</p>
         </div>
       </div>
     </div>

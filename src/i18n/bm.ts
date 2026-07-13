@@ -457,6 +457,7 @@ export const bm: Translations = {
     confirmDeclineBtn: '✘ Sahkan — Tolak jemputan',
     confirmSubmitting: 'Merekodkan maklum balas anda…',
     confirmNote: 'Tiada apa-apa direkodkan sehingga anda menekan butang di atas.',
+    closeNote: 'Anda boleh menutup halaman ini sekarang.',
     labelProgramme: 'Program',
     labelVenue: 'Tempat',
     labelDates: 'Tarikh',

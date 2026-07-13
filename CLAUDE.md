@@ -69,7 +69,10 @@ purpose (renaming the cookie would reset every user's saved language preference)
   invitations. Accept/decline links land on the public confirmation page (`/invitations/confirm`) and
   the state change is POST-only (`POST /api/invitations/respond`, plain form submit). Apply the same
   GET-validates/POST-mutates split to any future email-link action. `/invitations/*` and `/feedback`
-  bypass the proxy route guard.
+  bypass the proxy route guard. **Trainer-facing public pages (`/invitations/*`, `/feedback`) must
+  contain NO route into the app** (2026-07-13): no "Return to …" buttons, no clickable logo, no login
+  prompts — trainers are not system users. Same rule as their emails (the ack receipt has no links;
+  only the coordinator's copy carries the /engagements CTA).
   Registration domain-restricted (@moe.gov.my) OR on the admin allowlist. Admin allowlist:
   wun@iegcampus.com, mich88lim@gmail.com, michelle.lim@gmail.com — auto-set to admin on sign-up.
   All other accounts start as role=user, status=pending. No self-promotion (role/status changes are
