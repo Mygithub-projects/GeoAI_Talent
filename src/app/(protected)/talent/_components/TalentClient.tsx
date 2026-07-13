@@ -189,13 +189,6 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
     [districtStats, districtFilter]
   )
 
-  const deserts   = useMemo(() =>
-    districtStats.filter(s => s.coverage === 'none' || s.coverage === 'low')
-      .sort((a, b) => a.count - b.count || a.district.localeCompare(b.district)),
-    [districtStats])
-  const congested = useMemo(() =>
-    districtStats.filter(s => s.coverage === 'high').sort((a, b) => b.count - a.count),
-    [districtStats])
   const coveredCount = useMemo(
     () => districtStats.filter(s => s.count > 0).length,
     [districtStats])
@@ -300,7 +293,6 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
   const panelCls  = 'glass pointer-events-auto rounded-xl shadow-float border border-border'
   const labelCls  = 'block text-[10px] font-bold uppercase tracking-wide text-muted mb-1'
   const inputCls  = 'w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue'
-  const chipCls   = 'rounded-lg bg-white/80 border border-border px-2.5 py-1.5'
 
   const STAT_LABELS = {
     none: tt.legendNone, low: tt.legendLow, high: tt.legendHigh, normal: tt.legendNormal,
@@ -352,6 +344,66 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
         <div className={`${panelCls} absolute left-4 top-4 bottom-4 w-72 overflow-y-auto p-4`}>
           <h1 className="font-display text-base font-semibold text-slate">{tt.title}</h1>
           <p className="mt-0.5 mb-3 text-[11px] leading-snug text-muted">{tt.subtitle}</p>
+
+          {/* Selected trainer (moved here when the right insights panel was
+              removed, 2026-07-13 — the profile + admin transfer entry point) */}
+          {selectedTrainer && (
+            <div className="mb-3 rounded-lg border border-teal/40 bg-teal/5 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-[9px] font-bold uppercase tracking-wide text-teal">{tt.trainerPanelTitle}</span>
+                <button
+                  onClick={() => { setSelectedId(null); setSelectedSnap(null) }}
+                  className="text-[10px] font-bold text-muted hover:text-slate"
+                  aria-label={tt.clearSelection}
+                >✕</button>
+              </div>
+              <p className="mt-1 text-sm font-bold text-ink-navy leading-tight">{selectedTrainer.trainer_name}</p>
+              <p className="mt-1 text-[11px] text-slate">
+                <span className="font-bold">{tt.school}: </span>
+                {selectedTrainer.school_name ?? <em className="text-muted">{tt.noSchool}</em>}
+              </p>
+              <p className="text-[11px] text-slate">
+                <span className="font-bold">{tt.district}: </span>
+                <span
+                  className="mr-1 inline-block h-2 w-2 rounded-full border border-white shadow-sm align-baseline"
+                  style={{ background: districtColor(selectedTrainer.ppd_district) }}
+                  aria-hidden
+                />
+                {selectedTrainer.ppd_district ?? '—'}
+              </p>
+              <p className="text-[11px] text-slate">
+                <span className="font-bold">{tt.coordinates}: </span>
+                <span className="font-mono">{selectedTrainer.lat.toFixed(4)}, {selectedTrainer.lng.toFixed(4)}</span>
+              </p>
+              {selectedTrainer.roles.length > 0 && (
+                <p className="mt-1 text-[11px] text-slate"><span className="font-bold">{tt.roles}: </span>{selectedTrainer.roles.join(', ')}</p>
+              )}
+              {selectedTrainer.skills.length > 0 && (
+                <p className="text-[11px] text-slate"><span className="font-bold">{tt.skills}: </span>{selectedTrainer.skills.map(localize).join(', ')}</p>
+              )}
+              {selectedTrainer.subjects.length > 0 && (
+                <p className="text-[11px] text-slate"><span className="font-bold">{tt.subjects}: </span>{selectedTrainer.subjects.map(localize).join(', ')}</p>
+              )}
+              {isAdmin && (
+                dropMode === 'transfer' ? (
+                  <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5">
+                    <p className="text-[11px] text-amber-800">{tt.transferPinHint}</p>
+                    <button
+                      onClick={() => setDropMode('none')}
+                      className="mt-1 text-[10px] font-bold text-royal-blue hover:underline"
+                    >{tt.transferPinCancel}</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setNewLocation(null); setTransferError(''); setTransferOpen(true) }}
+                    className="mt-2 w-full rounded-lg bg-ink-navy px-2.5 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity"
+                  >
+                    {tt.transferBtn}
+                  </button>
+                )
+              )}
+            </div>
+          )}
 
           <div className="mb-3">
             <input
@@ -444,90 +496,36 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
 
           {loading && <p className="text-[11px] text-muted">{tt.loading}</p>}
           {!loading && mapMode === 'heatmap' && (
-            <p className="text-[10px] leading-snug text-muted">{tt.zoomHint}</p>
+            <p className="mb-3 text-[10px] leading-snug text-muted">{tt.zoomHint}</p>
           )}
-        </div>
 
-        {/* ── Right: insights + selected trainer ─────────────── */}
-        <div className={`${panelCls} absolute right-4 top-4 w-80 max-h-[calc(100%-2rem)] overflow-y-auto p-4`}>
+          {/* Compact summary + legends (moved from the removed right panel,
+              2026-07-13 — deserts/congestion detail lives on the map dots
+              and their hover tooltips) */}
+          {!loading && (
+            <p className="mb-3 text-[11px] text-slate">
+              <span className="font-mono font-bold text-ink-navy">{visiblePins.length}</span> {tt.trainersShown.toLowerCase()}
+              {' · '}
+              <span className="font-mono font-bold text-ink-navy">{coveredCount}/{CANONICAL_PPD_DISTRICTS.length}</span> {tt.districtsCovered.toLowerCase()}
+            </p>
+          )}
 
-          {/* Summary chips */}
-          <div className="grid grid-cols-2 gap-1.5 mb-3">
-            {[
-              [tt.trainersShown, String(visiblePins.length)],
-              [tt.districtsCovered, `${coveredCount}/${CANONICAL_PPD_DISTRICTS.length}`],
-              [tt.desertsChip, String(deserts.length)],
-              [tt.congestedChip, String(congested.length)],
-            ].map(([label, value]) => (
-              <div key={label} className={chipCls}>
-                <span className="block text-[9px] font-bold uppercase tracking-wide text-muted">{label}</span>
-                <span className="font-mono text-sm font-bold text-ink-navy">{value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Selected trainer */}
-          {selectedTrainer && (
-            <div className="mb-3 rounded-lg border border-teal/40 bg-teal/5 p-3">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-[9px] font-bold uppercase tracking-wide text-teal">{tt.trainerPanelTitle}</span>
-                <button
-                  onClick={() => { setSelectedId(null); setSelectedSnap(null) }}
-                  className="text-[10px] font-bold text-muted hover:text-slate"
-                  aria-label={tt.clearSelection}
-                >✕</button>
-              </div>
-              <p className="mt-1 text-sm font-bold text-ink-navy leading-tight">{selectedTrainer.trainer_name}</p>
-              <p className="mt-1 text-[11px] text-slate">
-                <span className="font-bold">{tt.school}: </span>
-                {selectedTrainer.school_name ?? <em className="text-muted">{tt.noSchool}</em>}
-              </p>
-              <p className="text-[11px] text-slate">
-                <span className="font-bold">{tt.district}: </span>
-                <span
-                  className="mr-1 inline-block h-2 w-2 rounded-full border border-white shadow-sm align-baseline"
-                  style={{ background: districtColor(selectedTrainer.ppd_district) }}
-                  aria-hidden
-                />
-                {selectedTrainer.ppd_district ?? '—'}
-              </p>
-              <p className="text-[11px] text-slate">
-                <span className="font-bold">{tt.coordinates}: </span>
-                <span className="font-mono">{selectedTrainer.lat.toFixed(4)}, {selectedTrainer.lng.toFixed(4)}</span>
-              </p>
-              {selectedTrainer.roles.length > 0 && (
-                <p className="mt-1 text-[11px] text-slate"><span className="font-bold">{tt.roles}: </span>{selectedTrainer.roles.join(', ')}</p>
-              )}
-              {selectedTrainer.skills.length > 0 && (
-                <p className="text-[11px] text-slate"><span className="font-bold">{tt.skills}: </span>{selectedTrainer.skills.map(localize).join(', ')}</p>
-              )}
-              {selectedTrainer.subjects.length > 0 && (
-                <p className="text-[11px] text-slate"><span className="font-bold">{tt.subjects}: </span>{selectedTrainer.subjects.map(localize).join(', ')}</p>
-              )}
-              {isAdmin && (
-                dropMode === 'transfer' ? (
-                  <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5">
-                    <p className="text-[11px] text-amber-800">{tt.transferPinHint}</p>
-                    <button
-                      onClick={() => setDropMode('none')}
-                      className="mt-1 text-[10px] font-bold text-royal-blue hover:underline"
-                    >{tt.transferPinCancel}</button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => { setNewLocation(null); setTransferError(''); setTransferOpen(true) }}
-                    className="mt-2 w-full rounded-lg bg-ink-navy px-2.5 py-1.5 text-xs font-bold text-white hover:opacity-90 transition-opacity"
-                  >
-                    {tt.transferBtn}
-                  </button>
-                )
-              )}
+          <div className="mb-3">
+            <span className={labelCls}>{tt.legendTitle}</span>
+            <p className="mb-1.5 text-[10px] leading-snug text-muted">{tt.insightsHint}</p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {legendRows.map(r => (
+                <span key={r.key} className="flex items-center gap-1.5 text-[10px] text-slate">
+                  <span className="inline-block h-3.5 w-3.5 rounded-full shrink-0" style={r.swatch} aria-hidden />
+                  {r.label}
+                </span>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* Pin colour legend — zoomed-in view: which PPD each pin colour means */}
           {mapMode === 'pins' && pinLegend.length > 0 && (
-            <div className="mb-3">
+            <div>
               <span className={labelCls}>{tt.pinLegendTitle}</span>
               <ul className="max-h-40 overflow-y-auto space-y-0.5">
                 {pinLegend.map(row => (
@@ -551,76 +549,6 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
               </ul>
             </div>
           )}
-
-          {/* Legend */}
-          <div className="mb-3">
-            <span className={labelCls}>{tt.legendTitle}</span>
-            <p className="mb-1.5 text-[10px] leading-snug text-muted">{tt.insightsHint}</p>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-              {legendRows.map(r => (
-                <span key={r.key} className="flex items-center gap-1.5 text-[10px] text-slate">
-                  <span className="inline-block h-3.5 w-3.5 rounded-full shrink-0" style={r.swatch} aria-hidden />
-                  {r.label}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Deserts */}
-          <div className="mb-3">
-            <span className={labelCls}>{tt.desertsTitle}</span>
-            {deserts.length === 0 ? (
-              <p className="text-[11px] text-muted">{tt.noneFlagged}</p>
-            ) : (
-              <ul className="space-y-0.5">
-                {deserts.map(s => (
-                  <li key={s.district}>
-                    <button
-                      onClick={() => flyTo(s.lat, s.lng, DRILL_ZOOM)}
-                      className="flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left text-[11px] hover:bg-surface transition-colors"
-                    >
-                      <span className="flex items-center gap-1.5 text-slate">
-                        <span
-                          className="inline-block h-2 w-2 rounded-full shrink-0"
-                          style={s.coverage === 'none'
-                            ? { background: '#FFFFFF', border: '2px solid #DC2626' }
-                            : { background: '#F59E0B' }}
-                          aria-hidden
-                        />
-                        {s.district}
-                      </span>
-                      <span className="font-mono font-bold text-ink-navy">{s.count}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Congestion */}
-          <div>
-            <span className={labelCls}>{tt.congestedTitle}</span>
-            {congested.length === 0 ? (
-              <p className="text-[11px] text-muted">{tt.noneFlagged}</p>
-            ) : (
-              <ul className="space-y-0.5">
-                {congested.map(s => (
-                  <li key={s.district}>
-                    <button
-                      onClick={() => flyTo(s.lat, s.lng, DRILL_ZOOM)}
-                      className="flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left text-[11px] hover:bg-surface transition-colors"
-                    >
-                      <span className="flex items-center gap-1.5 text-slate">
-                        <span className="inline-block h-2 w-2 rounded-full shrink-0 bg-ink-navy" aria-hidden />
-                        {s.district}
-                      </span>
-                      <span className="font-mono font-bold text-ink-navy">{s.count}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
 
         {/* ── Transfer modal ─────────────────────────────────── */}
