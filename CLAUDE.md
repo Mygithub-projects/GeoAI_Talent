@@ -114,6 +114,12 @@ purpose (renaming the cookie would reset every user's saved language preference)
   stated deadline; `/feedback` bypasses the proxy route guard — keep it that way). Submissions land
   in `workshop_feedback` (UNIQUE per engagement+trainer). `/trainer-feedback` dashboard is scoped
   like `/reports`/`/calendar` (admins all, non-admins own workshops via `created_by`).
+- **Settings / My Account** (`/settings`, 2026-07-13): the only self-service profile surface. A user
+  may edit ONLY their own `full_name` (`POST /api/settings/profile`, audited `profile.self_update`)
+  and password (`POST /api/settings/password`, audited `user.password_change`) — role/status/district
+  stay admin-managed (no self-promotion). The password change runs `auth.updateUser` SERVER-side on
+  purpose: browsers on restricted gov networks cannot reach Supabase directly (same rationale as the
+  login proxy) — never move it client-side.
 - **Lexi assistant** (Phase 7, live): `POST /api/assistant` orchestrator + 6 deterministic tools in
   `src/lib/assistantTools.ts` (KB search, find trainers, trainer history, availability, navigate,
   web search). The LLM only parses intent and phrases replies — every count/cost/date comes from a
@@ -151,7 +157,11 @@ Royal Blue #1E63C4 (interactive), Teal #12B5AC (geospatial accent), Amber #F2A34
 Type: Plus Jakarta Sans (display), Inter (body), IBM Plex Mono (data). Logo in `/public`
 (logo_horizontal / logo_icon / logo_dark — wordmark inside the SVGs reads "GeoAI Talent Agent").
 App shell = gradient nav rail (teal active-indicator bar) + translucent blur top bar + full-bleed map +
-assistant drawer. All tokens live in `globals.css` `@theme` (+ gradient/glass utilities: `.glass`,
+assistant drawer. **AppShell's `<main>` is THE scroll container (`overflow-y-auto`, 2026-07-13) — never
+set it back to `overflow-hidden`:** content pages (settings/reports/calendar/…) rely on it and add no
+scroller of their own (clipping made everything below the fold unreachable — 9,301px hidden on
+/reports); map screens fill it exactly with `absolute inset-0` so they never show a scrollbar, and the
+engagements board keeps its own inner scroller. All tokens live in `globals.css` `@theme` (+ gradient/glass utilities: `.glass`,
 `.geo-pattern`, `.bg-hero-gradient/.bg-rail-gradient/.bg-cta-gradient`, `.card-lift`, `.skeleton`,
 `.animate-fade-up` + `.stagger-*`; shadows `shadow-card/card-hover/float/modal`). Reuse the primitives
 in `src/components/ui/` (Button, Input, Alert, Card, Badge, EmptyState, Skeleton) instead of inline
