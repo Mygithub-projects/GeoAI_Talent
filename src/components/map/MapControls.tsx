@@ -128,10 +128,28 @@ export function MapControls({
 }: MapControlsProps) {
   const { t } = useLanguage()
 
+  // Trainer-count pill — bottom-left in Mode A; in Mode B it sits next
+  // to the mode toggle instead (2026-07-13, user request: the venue
+  // search panel occupies Mode B's left side and the pill overlapped it)
+  const countPill = (
+    <div className="flex items-center gap-2 rounded-full bg-ink-navy/90 px-3 py-1.5 text-xs font-medium text-white shadow backdrop-blur-sm">
+      {loading || isRecommending ? (
+        <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      ) : (
+        <span className="font-mono font-semibold text-teal">{trainersCount}</span>
+      )}
+      <span>{t.map.trainersFound}</span>
+    </div>
+  )
+
   return (
     <>
       {/* ── Mode A / B segmented toggle — top-centre ── */}
-      <div className="pointer-events-auto absolute left-1/2 top-4 z-[1000] -translate-x-1/2">
+      <div className="pointer-events-auto absolute left-1/2 top-4 z-[1000] flex -translate-x-1/2 flex-col items-center gap-1.5">
+        <div className="flex items-center gap-2">
         <div data-tour="mode-toggle" className="flex rounded-full border border-white/60 bg-white/90 p-0.5 shadow-float backdrop-blur-md">
           <button
             onClick={() => onSetAppMode('A')}
@@ -156,6 +174,11 @@ export function MapControls({
             {t.map.modeBLabel}
           </button>
         </div>
+        {appMode === 'B' && countPill}
+        </div>
+        {appMode === 'B' && !centre && !loading && (
+          <p className="text-[10px] text-white/70 [text-shadow:0_1px_2px_rgb(14_47_87_/_0.5)]">{t.map.venueNotSet}</p>
+        )}
       </div>
 
       {/* ── Top-left ── */}
@@ -260,22 +283,13 @@ export function MapControls({
         />
       )}
 
-      {/* ── Bottom-left: trainer count (+ drop-pin in Mode A) ── */}
-      <div className="pointer-events-auto absolute bottom-8 left-4 z-[1000] flex flex-col items-start gap-1.5">
-        <div className="flex items-end gap-2">
-          <div className="flex items-center gap-2 rounded-full bg-ink-navy/90 px-3 py-1.5 text-xs font-medium text-white shadow backdrop-blur-sm">
-            {loading || isRecommending ? (
-              <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <span className="font-mono font-semibold text-teal">{trainersCount}</span>
-            )}
-            <span>{t.map.trainersFound}</span>
-          </div>
-
-          {appMode === 'A' && (
+      {/* ── Bottom-left (Mode A only): trainer count + drop-pin ──
+           In Mode B the count pill lives next to the mode toggle at the
+           top — the venue search panel occupies this corner. ── */}
+      {appMode === 'A' && (
+        <div className="pointer-events-auto absolute bottom-8 left-4 z-[1000] flex flex-col items-start gap-1.5">
+          <div className="flex items-end gap-2">
+            {countPill}
             <button
               onClick={onToggleDropPin}
               title={dropPinMode ? t.map.pinInstruction : t.map.dropPin}
@@ -289,17 +303,13 @@ export function MapControls({
               <PinIcon active={dropPinMode} />
               <span>{dropPinMode ? t.map.pinInstruction : t.map.dropPin}</span>
             </button>
+          </div>
+
+          {mode === 'heatmap' && !loading && (
+            <p className="pl-1 text-[10px] text-white/55">{t.map.clickToExplore}</p>
           )}
         </div>
-
-        {appMode === 'A' && mode === 'heatmap' && !loading && (
-          <p className="pl-1 text-[10px] text-white/55">{t.map.clickToExplore}</p>
-        )}
-
-        {appMode === 'B' && !centre && !loading && (
-          <p className="pl-1 text-[10px] text-white/55">{t.map.venueNotSet}</p>
-        )}
-      </div>
+      )}
 
       {/* ── Bottom-right: radius slider (when centre is set) ── */}
       {centre && (
