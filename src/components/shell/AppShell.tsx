@@ -36,7 +36,12 @@ export function AppShell({ children, userName, userRole, pendingCount = 0 }: App
           pendingCount={pendingCount}
         />
 
-        <main className="relative flex-1 overflow-hidden">
+        {/* main is THE scroll container for content pages (settings/reports/
+            calendar/…). Map screens fill it exactly with `absolute inset-0`,
+            so they never overflow and never show a scrollbar. Was
+            overflow-hidden, which silently CLIPPED every page taller than
+            the viewport (9,300px unreachable on /reports). */}
+        <main className="relative flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
 
