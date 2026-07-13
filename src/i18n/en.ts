@@ -457,6 +457,34 @@ export interface Translations {
     labelVenue: string
     labelDates: string
   }
+  settings: {
+    title: string
+    subtitle: string
+    profileTitle: string
+    emailLabel: string
+    roleLabel: string
+    roleAdmin: string
+    roleUser: string
+    districtLabel: string
+    statewide: string
+    nameTitle: string
+    nameLabel: string
+    nameHint: string
+    nameSaved: string
+    passwordTitle: string
+    newPassword: string
+    confirmPassword: string
+    passwordHint: string
+    passwordsNoMatch: string
+    passwordTooShort: string
+    passwordSaved: string
+    prefsTitle: string
+    languageLabel: string
+    languageNote: string
+    save: string
+    saving: string
+    genericError: string
+  }
   feedback: {
     title: string
     intro: string
@@ -1086,6 +1114,34 @@ export const en: Translations = {
     labelProgramme: 'Programme',
     labelVenue: 'Venue',
     labelDates: 'Dates',
+  },
+  settings: {
+    title: 'Settings',
+    subtitle: 'Your account and preferences.',
+    profileTitle: 'My account',
+    emailLabel: 'Email',
+    roleLabel: 'Role',
+    roleAdmin: 'Administrator',
+    roleUser: 'Standard user',
+    districtLabel: 'PPD district',
+    statewide: 'Statewide',
+    nameTitle: 'Display name',
+    nameLabel: 'Full name',
+    nameHint: 'Shown in audit logs and notifications.',
+    nameSaved: 'Display name updated.',
+    passwordTitle: 'Change password',
+    newPassword: 'New password',
+    confirmPassword: 'Confirm new password',
+    passwordHint: 'At least 8 characters.',
+    passwordsNoMatch: 'Passwords do not match.',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    passwordSaved: 'Password changed successfully.',
+    prefsTitle: 'Preferences',
+    languageLabel: 'Language',
+    languageNote: 'Applies immediately across the app and is remembered on this browser.',
+    save: 'Save',
+    saving: 'Saving…',
+    genericError: 'Something went wrong. Please try again.',
   },
   feedback: {
     title: 'Workshop feedback',

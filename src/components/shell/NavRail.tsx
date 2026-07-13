@@ -233,8 +233,15 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
         <Link
           href="/settings"
           title={!expanded ? t.map.navSettings : undefined}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors ${!expanded ? 'justify-center' : ''}`}
+          className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            pathname === '/settings'
+              ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.08)]'
+              : 'text-white/70 hover:bg-white/10 hover:text-white'
+          } ${!expanded ? 'justify-center' : ''}`}
         >
+          {pathname === '/settings' && (
+            <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-teal" aria-hidden />
+          )}
           <span className="flex-shrink-0"><SettingsIcon /></span>
           {expanded && <span className="truncate">{t.map.navSettings}</span>}
         </Link>
