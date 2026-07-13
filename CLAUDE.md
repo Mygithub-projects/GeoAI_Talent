@@ -18,13 +18,22 @@ purpose (renaming the cookie would reset every user's saved language preference)
 
 ## Tech stack
 - Next.js (App Router) + TypeScript + Tailwind v4; Supabase (PostgreSQL + PostGIS + Auth + RLS).
-- Map: react-leaflet + OSM tiles + heat layer.
+- Map: react-leaflet + OSM tiles + heat layer. **Two hard-won rules (2026-07-13):**
+  (1) any floating panel rendered over a `MapCanvas` MUST sit in a `z-[1000]` wrapper — Leaflet's
+  internal panes carry z-index 400–700 and `.leaflet-container` creates no stacking context, so an
+  un-z-indexed panel paints INVISIBLY behind the map (bit `/talent` for a whole phase; the dashboard's
+  `MapControls` already does this). (2) `TrainerDots` viewport-culls above 300 pins (only markers in
+  the padded visible area mount, re-culled on `moveend`) — do not regress this; ~990 statewide markers
+  each carry a tooltip + popup subtree and mounting them all froze the zoom threshold crossing.
 - LLM: OpenAI-compatible client, **Groq now** (`GROQ_API_KEY`, base `https://api.groq.com/openai/v1`,
   a tool-use model), swappable to Claude/OpenAI via `LLM_PROVIDER`/`LLM_BASE_URL`/`LLM_MODEL`. All LLM
   calls go behind `src/lib/llm.ts`: `llm()` (plain), `llmChat()` (tool use — Lexi orchestrator),
   `llmWebSearch()` (compound model). Handle 429s with backoff (3-key rotation built in). **Groq gotcha:**
   llama models stochastically 400 with `tool_use_failed` on tool calls — `recoverToolCall()` in llm.ts
-  parses the intended call out of the error's `failed_generation`; do not remove it.
+  parses the intended call out of the error's `failed_generation`; do not remove it. **Groq also
+  DECOMMISSIONS models:** `llama3-8b-8192` died → `LLM_MODEL_FAST=llama-3.1-8b-instant` (2026-07-13),
+  `compound-beta` → `groq/compound-mini` earlier. An LLM route suddenly failing with
+  `model_decommissioned` means update the env model id (.env.local + .env.example), not the code.
 - Embeddings: Groq has none → Lexi's KB retrieval is fetch-and-rank in `src/lib/knowledgeBase.ts`
   (small interface — swap for FTS/pgvector later). KB rows live in `knowledge_base` (bilingual,
   seeded by migration 022, editable via `/admin/database`).
@@ -143,7 +152,11 @@ assistant drawer. All tokens live in `globals.css` `@theme` (+ gradient/glass ut
 `.geo-pattern`, `.bg-hero-gradient/.bg-rail-gradient/.bg-cta-gradient`, `.card-lift`, `.skeleton`,
 `.animate-fade-up` + `.stagger-*`; shadows `shadow-card/card-hover/float/modal`). Reuse the primitives
 in `src/components/ui/` (Button, Input, Alert, Card, Badge, EmptyState, Skeleton) instead of inline
-Tailwind re-implementations. Map floating panels use the `.glass`/`shadow-float` treatment. Cards
+Tailwind re-implementations. Map floating panels use the `.glass`/`shadow-float` treatment inside a
+`z-[1000]` wrapper (see Map rules above). `/talent` is deliberately SINGLE-panel (left only — user
+decision 2026-07-13): selected-trainer card at the top, coverage/pin legends + summary line at the
+bottom; do not reintroduce a right insights panel (deserts/congestion live on the map dots + tooltips).
+Cards
 12–16px radius, pill buttons, Mode A/B segmented control, colour-coded status badges. Subtle motion;
 respect prefers-reduced-motion. WCAG AA, keyboard focus, responsive. Every new UI string goes into BOTH
 `src/i18n/en.ts` and `bm.ts` (the `Translations` interface enforces parity) — no hardcoded UI text.
