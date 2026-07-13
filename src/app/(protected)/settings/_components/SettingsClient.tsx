@@ -116,7 +116,7 @@ export function SettingsClient({ fullName, email, role, district }: Props) {
         </section>
 
         {/* ── Display name ───────────────────────────────────── */}
-        <section className={`${cardCls} animate-fade-up`}>
+        <section data-tour="set-name" className={`${cardCls} animate-fade-up`}>
           <h2 className={cardHdr}>{s.nameTitle}</h2>
           <form onSubmit={saveName} className="mt-3 space-y-3">
             <Input
@@ -135,7 +135,7 @@ export function SettingsClient({ fullName, email, role, district }: Props) {
         </section>
 
         {/* ── Change password ────────────────────────────────── */}
-        <section className={`${cardCls} animate-fade-up`}>
+        <section data-tour="set-password" className={`${cardCls} animate-fade-up`}>
           <h2 className={cardHdr}>{s.passwordTitle}</h2>
           <form onSubmit={savePassword} className="mt-3 space-y-3">
             <Input

@@ -132,7 +132,7 @@ export function MapControls({
     <>
       {/* ── Mode A / B segmented toggle — top-centre ── */}
       <div className="pointer-events-auto absolute left-1/2 top-4 z-[1000] -translate-x-1/2">
-        <div className="flex rounded-full border border-white/60 bg-white/90 p-0.5 shadow-float backdrop-blur-md">
+        <div data-tour="mode-toggle" className="flex rounded-full border border-white/60 bg-white/90 p-0.5 shadow-float backdrop-blur-md">
           <button
             onClick={() => onSetAppMode('A')}
             className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors ${
@@ -161,7 +161,7 @@ export function MapControls({
       {/* ── Top-left ── */}
       <div className="pointer-events-auto absolute left-4 top-4 z-[1000]">
         {appMode === 'A' ? (
-          <div className="rounded-xl bg-white/90 shadow-float backdrop-blur-md border border-white/60 p-2 w-56">
+          <div data-tour="skill-filter" className="rounded-xl bg-white/90 shadow-float backdrop-blur-md border border-white/60 p-2 w-56">
             <SkillCheckboxFilter
               skills={skills}
               selectedIds={selectedItemIds}

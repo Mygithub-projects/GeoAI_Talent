@@ -147,6 +147,7 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
 
   return (
     <nav
+      data-tour="nav"
       aria-label={t.common.mainNavigation}
       className={`
         flex flex-col bg-rail-gradient text-white flex-shrink-0 transition-all duration-200
@@ -177,6 +178,7 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.href === '/admin/users' ? 'nav-admin' : undefined}
                 title={!expanded ? item.label : undefined}
                 className={`
                   relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium

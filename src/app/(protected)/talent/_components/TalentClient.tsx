@@ -341,7 +341,7 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
       <div className="pointer-events-none absolute inset-0 z-[1000]">
 
         {/* ── Left: filter panel ─────────────────────────────── */}
-        <div className={`${panelCls} absolute left-4 top-4 bottom-4 w-72 overflow-y-auto p-4`}>
+        <div data-tour="talent-panel" className={`${panelCls} absolute left-4 top-4 bottom-4 w-72 overflow-y-auto p-4`}>
           <h1 className="font-display text-base font-semibold text-slate">{tt.title}</h1>
           <p className="mt-0.5 mb-3 text-[11px] leading-snug text-muted">{tt.subtitle}</p>
 

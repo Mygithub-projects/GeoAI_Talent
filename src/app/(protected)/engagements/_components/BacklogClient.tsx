@@ -762,7 +762,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
 
         {/* ── Search / filter toolbar (Engagements tab only) ── */}
         {tab === 'engagements' && (
-          <div style={{
+          <div data-tour="eng-filters" style={{
             display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center',
             background: '#ffffff', border: '1px solid #E2E8F0',
             borderRadius: 10, padding: '10px 14px',

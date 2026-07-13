@@ -129,7 +129,7 @@ export function TrainerFeedbackClient({ workshops, isAdmin, feedbackAvailable }:
       </div>
 
       {/* KPI tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
+      <div data-tour="fb-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 20 }}>
         <StatTile
           label={f.tileResponses}
           value={String(totals.responses)}

@@ -114,6 +114,13 @@ purpose (renaming the cookie would reset every user's saved language preference)
   stated deadline; `/feedback` bypasses the proxy route guard — keep it that way). Submissions land
   in `workshop_feedback` (UNIQUE per engagement+trainer). `/trainer-feedback` dashboard is scoped
   like `/reports`/`/calendar` (admins all, non-admins own workshops via `created_by`).
+- **Guided Tour** (2026-07-13): hand-rolled spotlight walkthrough — `src/components/tour/TourProvider.tsx`
+  (mounted in AppShell, overlay at `z-[4000]`, the topmost layer) + `steps.ts`. Steps target
+  `[data-tour="…"]` attributes on STABLE chrome only (never data rows — missing targets are skipped
+  after 8s); copy lives in the i18n `tour` namespace (button label is "Tour" in BOTH languages, user
+  decision). Auto-starts once per browser via localStorage `geo-tour-done`; TopBar "Tour" button
+  re-runs it. When adding a screen, add its steps + `data-tour` anchors; keep `adminOnly` on
+  admin-only steps. Do not add a tour library — the engine is deliberately dependency-free.
 - **Settings / My Account** (`/settings`, 2026-07-13): the only self-service profile surface. A user
   may edit ONLY their own `full_name` (`POST /api/settings/profile`, audited `profile.self_update`)
   and password (`POST /api/settings/password`, audited `user.password_change`) — role/status/district

@@ -453,7 +453,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
 
   return (
     <div className="absolute inset-0">
-      <div className="absolute inset-0">
+      <div data-tour="map" className="absolute inset-0">
         <MapCanvas
           mode={mapMode}
           appMode={appMode}

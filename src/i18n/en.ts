@@ -485,6 +485,71 @@ export interface Translations {
     saving: string
     genericError: string
   }
+  tour: {
+    button: string
+    next: string
+    back: string
+    skip: string
+    done: string
+    welcomeTitle: string
+    welcomeBody: string
+    navTitle: string
+    navBody: string
+    bellTitle: string
+    bellBody: string
+    assistantTitle: string
+    assistantBody: string
+    languageTitle: string
+    languageBody: string
+    tourBtnTitle: string
+    tourBtnBody: string
+    modeToggleTitle: string
+    modeToggleBody: string
+    skillFilterTitle: string
+    skillFilterBody: string
+    mapTitle: string
+    mapBody: string
+    engIntroTitle: string
+    engIntroBody: string
+    engFiltersTitle: string
+    engFiltersBody: string
+    engBoardTitle: string
+    engBoardBody: string
+    calIntroTitle: string
+    calIntroBody: string
+    calToolbarTitle: string
+    calToolbarBody: string
+    repIntroTitle: string
+    repIntroBody: string
+    repFiltersTitle: string
+    repFiltersBody: string
+    repExportTitle: string
+    repExportBody: string
+    repClassifyTitle: string
+    repClassifyBody: string
+    talIntroTitle: string
+    talIntroBody: string
+    talPanelTitle: string
+    talPanelBody: string
+    talDotsTitle: string
+    talDotsBody: string
+    talTransferTitle: string
+    talTransferBody: string
+    fbIntroTitle: string
+    fbIntroBody: string
+    fbTilesTitle: string
+    fbTilesBody: string
+    setIntroTitle: string
+    setIntroBody: string
+    setNameTitle: string
+    setNameBody: string
+    setPasswordTitle: string
+    setPasswordBody: string
+    adminNavTitle: string
+    adminNavBody: string
+    doneTitle: string
+    doneBody: string
+  }
   feedback: {
     title: string
     intro: string
@@ -1142,6 +1207,71 @@ export const en: Translations = {
     save: 'Save',
     saving: 'Saving…',
     genericError: 'Something went wrong. Please try again.',
+  },
+  tour: {
+    button: 'Tour',
+    next: 'Next',
+    back: 'Back',
+    skip: 'Skip tour',
+    done: 'Done',
+    welcomeTitle: 'Welcome to GeoAI Talent Agent',
+    welcomeBody: 'This short tour walks you through the main screens — where trainer expertise lives on the map, how invitations work, and where to find reports. Use Next to continue, or skip anytime.',
+    navTitle: 'Navigation rail',
+    navBody: 'Every screen lives here: Dashboard, Search, Engagements, Calendar, Reports, Talent Distribution, Trainer Feedback — and Settings at the bottom. Click the arrow at the bottom to expand the labels.',
+    bellTitle: 'Notifications',
+    bellBody: 'The bell lights up when a trainer accepts or declines one of your invitations, or when a new account awaits approval (admins).',
+    assistantTitle: 'Lexi — your assistant',
+    assistantBody: 'Ask Lexi things like "how many ICT trainers are in Kuching?" or "is trainer X available in August?" — answers come from live system data, and Lexi can take you to the right screen.',
+    languageTitle: 'Language',
+    languageBody: 'Switch the whole app between English and Bahasa Melayu at any time. Your choice is remembered on this browser.',
+    tourBtnTitle: 'This tour',
+    tourBtnBody: 'You can re-run this walkthrough anytime from the Tour button.',
+    modeToggleTitle: 'Two ways to explore',
+    modeToggleBody: 'Mode A shows where trainer expertise is concentrated statewide. Mode B starts from a training venue — pick a place and get ranked trainer recommendations within a travel radius.',
+    skillFilterTitle: 'Filter by skill or subject',
+    skillFilterBody: 'Tick any combination of skills and subjects — the map reshapes to show only trainers holding ALL of them.',
+    mapTitle: 'The live map',
+    mapBody: 'The heat glow shows trainer density. Zoom in (or click a district pin) and it switches to individual trainer pins — click a pin for the full profile with travel-cost estimates in Mode B.',
+    engIntroTitle: 'Engagements board',
+    engIntroBody: 'Every workshop you create is tracked here — who was invited, who accepted or declined, and the overall status rollup.',
+    engFiltersTitle: 'Search and filter',
+    engFiltersBody: 'Find any workshop by text, date range, or status. Admins see all workshops; you always see your own.',
+    engBoardTitle: 'Workshop groups',
+    engBoardBody: 'Each workshop expands to show its invited trainers with an X/Y confirmed progress bar. From here you can re-invite, manually confirm, or cancel.',
+    calIntroTitle: 'Workshop Calendar',
+    calIntroBody: 'Your scheduled workshops on a monthly grid. Rescheduling an invited workshop resets trainer confirmations and sends fresh accept/decline emails automatically.',
+    calToolbarTitle: 'Calendar controls',
+    calToolbarBody: 'Move between months, jump to today, search by trainer, and toggle draft workshops on or off.',
+    repIntroTitle: 'Reports',
+    repIntroBody: 'Per-workshop invitation outcomes and travel-cost summaries, with per-trainer detail underneath each row.',
+    repFiltersTitle: 'Report filters',
+    repFiltersBody: 'Narrow by text, workshop, date range, or status — the summary chips and the CSV export always match exactly what you see.',
+    repExportTitle: 'CSV export',
+    repExportBody: 'Download the filtered report as a CSV that opens cleanly in Excel — one row per invited trainer.',
+    repClassifyTitle: '✦ AI fit classification',
+    repClassifyBody: 'For trainers who have not responded yet, the AI can suggest a fit label with a bilingual reason. Suggestions are advisory only — a person always approves the final classification.',
+    talIntroTitle: 'Talent Distribution',
+    talIntroBody: 'The statewide view of where expertise is concentrated — and where it is missing.',
+    talPanelTitle: 'Filters and legends',
+    talPanelBody: 'Filter by skill, district, name, radius, or date-range availability. Click a trainer pin and their profile appears at the top of this panel.',
+    talDotsTitle: 'Talent deserts and congestion',
+    talDotsBody: 'Each district is a coloured dot: a hollow red ring means no matching trainers, amber means very few, green is well covered, navy is highly concentrated. Hover a dot for the exact count — tick a skill and watch the picture change.',
+    talTransferTitle: 'Workstation transfer (admin)',
+    talTransferBody: 'Select a trainer, then use "Update workstation" to move them to a registry school, a geocoded place, or a dropped pin — every transfer is audit-logged.',
+    fbIntroTitle: 'Trainer Feedback',
+    fbIntroBody: 'After a workshop ends, trainers automatically receive a feedback form by email. Their ratings and comments land here.',
+    fbTilesTitle: 'Feedback at a glance',
+    fbTilesBody: 'Response rate, average overall rating, and recommend percentage — filter by workshop to drill into one programme.',
+    setIntroTitle: 'Settings',
+    setIntroBody: 'Your account details and preferences.',
+    setNameTitle: 'Display name',
+    setNameBody: 'The name shown in audit logs and notifications — edit it here anytime.',
+    setPasswordTitle: 'Change password',
+    setPasswordBody: 'Set a new password (minimum 8 characters). It takes effect immediately.',
+    adminNavTitle: 'Admin screens',
+    adminNavBody: 'As an administrator you also have: User Management (approvals, roles), the Database console (reference data), Analytics (KPIs and cost accuracy), and the Audit Log (every sensitive action).',
+    doneTitle: 'You are all set',
+    doneBody: 'That is the whole system. Re-run this walkthrough anytime with the Tour button, or ask Lexi if you get stuck. Selamat maju jaya!',
   },
   feedback: {
     title: 'Workshop feedback',

@@ -257,7 +257,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
       <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 16px' }}>{isAdmin ? t.calendar.subtitle : t.calendar.subtitleUser}</p>
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+      <div data-tour="cal-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <button onClick={() => shiftMonth(-1)} aria-label={t.calendar.prevMonth}
             style={{ fontSize: 14, padding: '4px 10px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer' }}>◀</button>

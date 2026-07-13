@@ -232,7 +232,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
       </div>
 
       {/* Filter toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+      <div data-tour="rep-filters" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         <input type="text" value={q} onChange={e => setQ(e.target.value)} placeholder={r.searchPlaceholder} style={{ ...inputStyle, width: 220 }} />
         <select value={workshopId} onChange={e => setWorkshopId(e.target.value)} style={{ ...inputStyle, maxWidth: 260 }} aria-label={r.allWorkshops}>
           <option value="">{r.allWorkshops}</option>
@@ -256,6 +256,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
         </select>
         <button
           onClick={exportCsv}
+          data-tour="rep-export"
           disabled={filtered.length === 0}
           style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: 'white', background: '#1E63C4', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: filtered.length === 0 ? 'not-allowed' : 'pointer', opacity: filtered.length === 0 ? 0.5 : 1 }}
         >

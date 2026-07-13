@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { NavRail } from './NavRail'
 import { TopBar } from './TopBar'
 import { AssistantDrawer } from './AssistantDrawer'
+import { TourProvider } from '@/components/tour/TourProvider'
 import { signOut } from '@/app/(protected)/actions'
 
 interface AppShellProps {
@@ -18,6 +19,7 @@ export function AppShell({ children, userName, userRole, pendingCount = 0 }: App
   const [assistantOpen, setAssistantOpen] = useState(false)
 
   return (
+    <TourProvider userRole={userRole}>
     <div className="flex h-full flex-col">
       <TopBar
         userName={userName}
@@ -51,5 +53,6 @@ export function AppShell({ children, userName, userRole, pendingCount = 0 }: App
         />
       </div>
     </div>
+    </TourProvider>
   )
 }
