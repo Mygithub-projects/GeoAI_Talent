@@ -57,7 +57,7 @@ export function AddUserModal({ t }: Props) {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[3000] flex items-center justify-center bg-slate/50 backdrop-blur-sm"
           onClick={e => { if (e.target === e.currentTarget) { setOpen(false); reset() } }}
           role="dialog"
           aria-modal

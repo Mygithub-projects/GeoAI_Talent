@@ -22,7 +22,10 @@ purpose (renaming the cookie would reset every user's saved language preference)
   (1) any floating panel rendered over a `MapCanvas` MUST sit in a `z-[1000]` wrapper — Leaflet's
   internal panes carry z-index 400–700 and `.leaflet-container` creates no stacking context, so an
   un-z-indexed panel paints INVISIBLY behind the map (bit `/talent` for a whole phase; the dashboard's
-  `MapControls` already does this). (2) `TrainerDots` viewport-culls above 300 pins (only markers in
+  `MapControls` already does this). Same trap for chrome that OVERHANGS the map: the TopBar header is
+  `z-[1100]` (2026-07-14) because its backdrop-blur creates a stacking context and the bell dropdown
+  painted behind the map at the old z-30 — keep full-screen modal backdrops at z-[3000]+ so they still
+  cover the header. Ladder: map panels 1000 < header 1100 < modals 3000 < Tour 4000. (2) `TrainerDots` viewport-culls above 300 pins (only markers in
   the padded visible area mount, re-culled on `moveend`) — do not regress this; ~990 statewide markers
   each carry a tooltip + popup subtree and mounting them all froze the zoom threshold crossing.
 - LLM: OpenAI-compatible client, **Groq now** (`GROQ_API_KEY`, base `https://api.groq.com/openai/v1`,

@@ -45,8 +45,13 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
 
   const displayName = userName?.split(' ')[0] ?? ''
 
+  // z-[1100]: the bell dropdown overhangs the map area and this header's
+  // backdrop-blur creates a stacking context, so the header must beat
+  // Leaflet's panes (z 400–700) and the map panels (z-1000) or the dropdown
+  // paints invisibly behind the map. Modals (z-3000) and the Tour overlay
+  // (z-4000) still cover it.
   return (
-    <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-border/70 bg-white/85 px-4 backdrop-blur-md z-30 shadow-[0_1px_2px_0_rgb(14_47_87_/_0.05)]">
+    <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-border/70 bg-white/85 px-4 backdrop-blur-md z-[1100] shadow-[0_1px_2px_0_rgb(14_47_87_/_0.05)]">
       {/* Nav toggle (mobile / collapsed state) */}
       <button
         onClick={onToggleNav}
