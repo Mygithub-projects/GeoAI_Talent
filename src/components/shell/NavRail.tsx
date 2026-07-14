@@ -27,14 +27,6 @@ function MapIcon() {
   )
 }
 
-function SearchIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-    </svg>
-  )
-}
-
 function CalendarIcon() {
   return (
     <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
@@ -133,13 +125,11 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
 
   const navItems = [
     { href: '/dashboard',   label: t.map.navDashboard,    icon: <MapIcon />,      adminOnly: false, badge: 0 },
-    { href: '/search',      label: t.map.navSearch,       icon: <SearchIcon />,   adminOnly: false, badge: 0 },
     { href: '/engagements', label: t.map.navEngagements,  icon: <CalendarIcon />, adminOnly: false, badge: 0 },
     { href: '/calendar',    label: t.map.navCalendar,     icon: <CalendarGridIcon />, adminOnly: false, badge: 0 },
     { href: '/reports',     label: t.map.navReports,      icon: <DocumentReportIcon />, adminOnly: false, badge: 0 },
     { href: '/talent',      label: t.map.navTalent,       icon: <UsersMapIcon />,       adminOnly: false, badge: 0 },
     { href: '/trainer-feedback', label: t.map.navTrainerFeedback, icon: <StarFeedbackIcon />, adminOnly: false, badge: 0 },
-    { href: '/admin/users',     label: t.map.navAdmin,     icon: <ShieldIcon />,        adminOnly: true, badge: pendingCount },
     { href: '/admin/database',  label: t.map.navDatabase,  icon: <DatabaseIcon />,      adminOnly: true, badge: 0 },
     { href: '/admin/analytics', label: t.map.navAnalytics, icon: <ChartIcon />,         adminOnly: true, badge: 0 },
     { href: '/admin/audit',     label: t.map.navAudit,     icon: <ClipboardListIcon />, adminOnly: true, badge: 0 },
@@ -230,8 +220,55 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
         }
       </div>
 
-      {/* Settings + collapse toggle */}
+      {/* Admin + Settings + collapse toggle */}
       <div className="flex flex-col gap-1 border-t border-white/10 p-2">
+        {userRole === 'admin' && (() => {
+          const adminActive = pathname === '/admin/users' || pathname.startsWith('/admin/users/')
+          return (
+            <Link
+              href="/admin/users"
+              data-tour="nav-admin"
+              title={!expanded ? t.map.navAdmin : undefined}
+              className={`relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                adminActive
+                  ? 'bg-white/15 text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.08)]'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+              } ${!expanded ? 'justify-center' : ''}`}
+            >
+              {adminActive && (
+                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-teal" aria-hidden />
+              )}
+              <span className="relative flex-shrink-0">
+                <ShieldIcon />
+                {pendingCount > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -5, right: -6,
+                    minWidth: 16, height: 16,
+                    background: '#EF4444', color: '#fff',
+                    fontSize: 9, fontWeight: 800, lineHeight: '16px',
+                    borderRadius: 99, textAlign: 'center',
+                    padding: '0 3px', letterSpacing: 0,
+                    border: '1.5px solid #0E2F57',
+                  }}>
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </span>
+                )}
+              </span>
+              {expanded && <span className="truncate">{t.map.navAdmin}</span>}
+              {expanded && pendingCount > 0 && (
+                <span style={{
+                  marginLeft: 'auto', minWidth: 18, height: 18,
+                  background: '#EF4444', color: '#fff',
+                  fontSize: 10, fontWeight: 800, lineHeight: '18px',
+                  borderRadius: 99, textAlign: 'center',
+                  padding: '0 4px', flexShrink: 0,
+                }}>
+                  {pendingCount > 99 ? '99+' : pendingCount}
+                </span>
+              )}
+            </Link>
+          )
+        })()}
         <Link
           href="/settings"
           title={!expanded ? t.map.navSettings : undefined}
