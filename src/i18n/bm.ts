@@ -116,6 +116,8 @@ export const bm: Translations = {
     dropPin: 'Letak pin',
     clearCentre: 'Padam',
     useMyLocation: 'Lokasi saya',
+    locationDenied: 'Akses lokasi disekat — benarkan lokasi untuk laman ini dalam pelayar anda.',
+    locationUnavailable: 'Lokasi tidak tersedia dalam pelayar ini.',
     statewideView: 'Seluruh Negeri',
     myDistrict: 'Daerah saya',
     trainersFound: 'jurulatih',

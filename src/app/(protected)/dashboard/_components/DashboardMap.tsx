@@ -62,6 +62,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
   const [dropPinMode, setDropPinMode] = useState(false)
   const [mapZoom, setMapZoom]         = useState(initialZoom)
   const [loading, setLoading]         = useState(true)
+  const [geoError, setGeoError]       = useState<string | null>(null)
+  const geoErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Mode A state ──────────────────────────────────────────────
   const [heatPoints, setHeatPoints]   = useState<HeatPoint[]>([])
@@ -377,22 +379,36 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
     setSelectedPPDName(name ?? null)
   }, [])
 
+  const showGeoError = useCallback((message: string) => {
+    if (geoErrorTimerRef.current) clearTimeout(geoErrorTimerRef.current)
+    setGeoError(message)
+    geoErrorTimerRef.current = setTimeout(() => setGeoError(null), 4000)
+  }, [])
+
+  useEffect(() => () => {
+    if (geoErrorTimerRef.current) clearTimeout(geoErrorTimerRef.current)
+  }, [])
+
   const handleGeolocate = useCallback(() => {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) {
+      showGeoError(t.map.locationUnavailable)
+      return
+    }
     navigator.geolocation.getCurrentPosition(pos => {
       const lat = pos.coords.latitude
       const lng = pos.coords.longitude
+      setGeoError(null)
       setCentre([lat, lng])
+      flyKeyRef.current += 1
+      setFlyToTarget({ lat, lng, zoom: 12, key: flyKeyRef.current })
       if (appModeRef.current === 'B') {
         setVenueName(t.map.customLocation)
         setVenueSearch('')
-        flyKeyRef.current += 1
-        setFlyToTarget({ lat, lng, zoom: 12, key: flyKeyRef.current })
       } else {
         setSelectedPPDName(null)
       }
-    }, () => { /* geolocation denied */ })
-  }, [t.map.customLocation])
+    }, () => showGeoError(t.map.locationDenied))
+  }, [t.map.customLocation, t.map.locationDenied, t.map.locationUnavailable, showGeoError])
 
   // Always returns to the true statewide view (not the caller's own district
   // default) — "Zoom out" means the same thing for every user, admin or not.
@@ -486,6 +502,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
           onToggleDropPin={() => setDropPinMode(v => !v)}
           onClearCentre={handleClearCentre}
           onGeolocate={handleGeolocate}
+          geoError={geoError}
           trainersCount={trainersCount}
           loading={loading}
           mode={mapMode}

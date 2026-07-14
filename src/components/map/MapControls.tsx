@@ -26,6 +26,7 @@ interface MapControlsProps {
   onToggleDropPin: () => void
   onClearCentre:   () => void
   onGeolocate:     () => void
+  geoError:        string | null
   trainersCount:   number
   loading:         boolean
   // Mode A
@@ -93,6 +94,7 @@ export function MapControls({
   onToggleDropPin,
   onClearCentre,
   onGeolocate,
+  geoError,
   trainersCount,
   loading,
   mode,
@@ -254,6 +256,17 @@ export function MapControls({
         >
           <LocationIcon />
         </button>
+
+        {/* #B45309: the AA-contrast amber fill from the analytics convention —
+            brand amber #F2A341 fails 3:1 with white text */}
+        {geoError && (
+          <div
+            role="status"
+            className="max-w-64 self-end rounded-2xl bg-[#B45309]/95 px-3 py-1.5 text-right text-xs font-medium text-white shadow backdrop-blur-sm"
+          >
+            {geoError}
+          </div>
+        )}
       </div>
 
       {/* ── Recommendation panel — right side, Mode B only ── */}

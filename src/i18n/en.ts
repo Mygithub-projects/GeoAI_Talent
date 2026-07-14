@@ -111,6 +111,8 @@ export interface Translations {
     dropPin: string
     clearCentre: string
     useMyLocation: string
+    locationDenied: string
+    locationUnavailable: string
     statewideView: string
     myDistrict: string
     trainersFound: string
@@ -834,6 +836,8 @@ export const en: Translations = {
     dropPin: 'Drop pin',
     clearCentre: 'Clear',
     useMyLocation: 'My location',
+    locationDenied: 'Location access is blocked — allow location for this site in your browser.',
+    locationUnavailable: 'Location is not available in this browser.',
     statewideView: 'Statewide',
     myDistrict: 'My district',
     trainersFound: 'trainers',
