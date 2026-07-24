@@ -6,8 +6,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { useLanguage } from '@/i18n/LanguageProvider'
-import { LanguageToggle } from '@/components/LanguageToggle'
+import { getTranslations } from '@/i18n'
+import { PublicLanguageToggle } from '@/components/PublicLanguageToggle'
 
 interface Props {
   token:         string
@@ -17,14 +17,15 @@ interface Props {
   venueName:     string | null
   startDate:     string | null
   endDate:       string | null
+  initialLocale: 'en' | 'bm'   // the language the invitation email used
 }
 
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso + (iso.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
-export function ConfirmClient({ token, action, trainerName, trainingTitle, venueName, startDate, endDate }: Props) {
-  const { t } = useLanguage()
-  const c = t.invitationResponse
+export function ConfirmClient({ token, action, trainerName, trainingTitle, venueName, startDate, endDate, initialLocale }: Props) {
+  const [locale, setLocale] = useState<'en' | 'bm'>(initialLocale)
+  const c = getTranslations(locale).invitationResponse
   const [submitting, setSubmitting] = useState(false)
 
   const isAccept = action === 'accept'
@@ -38,7 +39,7 @@ export function ConfirmClient({ token, action, trainerName, trainingTitle, venue
       {/* Trainers are not system users — the logo is deliberately not a link. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
         <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
-        <LanguageToggle />
+        <PublicLanguageToggle value={locale} onChange={setLocale} />
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6 py-16">

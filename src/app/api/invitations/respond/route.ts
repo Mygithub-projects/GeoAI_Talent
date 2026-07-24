@@ -4,6 +4,7 @@ import { verifySignedToken, hashToken } from '@/lib/tokenSigning'
 import { recomputeEngagementStatus } from '@/lib/engagementRollup'
 import { sendEmail, resolveVenueName } from '@/lib/email'
 import { buildResponseAckEmail, buildTrainerResponseNotifyEmail } from '@/lib/emailContent'
+import { getTrainerLocale } from '@/lib/trainerLocale'
 
 // Public — reached from the accept/decline links in invitation emails.
 // No app session exists, so every read/write goes through the
@@ -75,9 +76,14 @@ export async function GET(req: NextRequest) {
 
 // ── POST: the trainer pressed Confirm — record the response ─────
 export async function POST(req: NextRequest) {
-  const redirectTo = (result: string) =>
-    // 303 so the browser follows with a GET (this is a form POST)
-    NextResponse.redirect(new URL(`/invitations/responded?result=${result}`, req.url), 303)
+  const redirectTo = (result: string, lang?: string) =>
+    // 303 so the browser follows with a GET (this is a form POST). When
+    // known, carry the trainer's language so the result page matches the
+    // email (the responded page has no token to look it up itself).
+    NextResponse.redirect(
+      new URL(`/invitations/responded?result=${result}${lang ? `&lang=${lang}` : ''}`, req.url),
+      303,
+    )
 
   const form = await req.formData().catch(() => null)
   const token = (form?.get('token') ?? null) as string | null
@@ -126,12 +132,15 @@ export async function POST(req: NextRequest) {
   // Acknowledgment email back to the trainer confirming what was recorded —
   // a pure receipt, no links or login prompt. Best-effort: a send failure
   // must never break the trainer's response flow.
+  // The trainer's email language — the one chosen when they were invited
+  // (migration 028; defaults BM). The receipt matches the invitation.
+  const trainerLang = await getTrainerLocale(admin, tokenRow.engagement_id, tokenRow.trainer_id)
   let ackTransport: string | null = null
   try {
     if (trainer?.email && engagement) {
       const venueName = await resolveVenueName(admin, engagement)
       const { subject, html } = buildResponseAckEmail({
-        lang:          'bm',  // invitations go out in BM; the acknowledgment matches
+        lang:          trainerLang,
         trainerName:   trainer.trainer_name ?? '',
         accepted:      tokenRow.action_scope === 'accept',
         trainingTitle: engagement.training_title ?? 'TBC',
@@ -189,14 +198,16 @@ export async function POST(req: NextRequest) {
     if (engagement?.created_by) {
       const { data: creator } = await admin
         .from('profiles')
-        .select('full_name, email')
+        .select('full_name, email, preferred_language')
         .eq('user_id', engagement.created_by)
         .single()
       if (creator?.email) {
         const venueName = await resolveVenueName(admin, engagement)
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+        // This one goes to the coordinator (an app user), so it follows
+        // THEIR own language preference, not the trainer's invite language.
         const { subject, html } = buildTrainerResponseNotifyEmail({
-          lang:          'bm',  // matches the BM default of the other system emails
+          lang:          creator.preferred_language === 'en' ? 'en' : 'bm',
           creatorName:   creator.full_name ?? '',
           trainerName:   trainer?.trainer_name ?? 'Jurulatih',
           accepted:      tokenRow.action_scope === 'accept',
@@ -213,5 +224,5 @@ export async function POST(req: NextRequest) {
     console.error('[respond] coordinator email failed:', err)
   }
 
-  return redirectTo(tokenRow.action_scope === 'accept' ? 'accepted' : 'declined')
+  return redirectTo(tokenRow.action_scope === 'accept' ? 'accepted' : 'declined', trainerLang)
 }

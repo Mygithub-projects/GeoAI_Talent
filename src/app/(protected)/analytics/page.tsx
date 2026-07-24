@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import Image from 'next/image'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getTranslations, isValidLocale, DEFAULT_LOCALE, LOCALE_COOKIE } from '@/i18n'
@@ -14,26 +12,28 @@ import {
 } from './_components/AnalyticsClient'
 
 export const dynamic = 'force-dynamic'
-// DESERT_THRESHOLD now lives in src/lib/districts.ts (shared with /talent)
 
-// Phase 8 — KPI / analytics dashboard, instrumented to the proposal's
-// KPIs. Every figure on this page is computed here in deterministic
-// code from the live tables (never by the LLM), then rendered by the
-// client component. Admin-only.
-export default async function AdminAnalyticsPage() {
+// Phase 8 — KPI / analytics dashboard. Every figure is computed here in
+// deterministic code from the live tables (never by the LLM), then
+// rendered by the client component. Open to every active user
+// (2026-07-22): admins see statewide activity; non-admins see only the
+// workshops they created — the trainer-pool + district-coverage panels
+// stay statewide reference data for everyone (user decision). Scoping
+// mirrors /reports (buildReportWorkshops): reads go through the
+// service-role client, so the created_by filter IS the access boundary.
+export default async function AnalyticsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: currentProfile } = await supabase
     .from('profiles')
-    .select('role, status, full_name')
+    .select('role, status')
     .eq('user_id', user.id)
     .single()
 
-  if (currentProfile?.role !== 'admin' || currentProfile?.status !== 'active') {
-    redirect('/dashboard')
-  }
+  if (!currentProfile || currentProfile.status !== 'active') redirect('/awaiting-approval')
+  const isAdmin = currentProfile.role === 'admin'
 
   const cookieStore = await cookies()
   const rawLang = cookieStore.get(LOCALE_COOKIE)?.value
@@ -42,17 +42,28 @@ export default async function AdminAnalyticsPage() {
 
   const admin = createAdminClient()
 
-  // ── Source data (small tables — whole-table reads are fine) ────
-  const [{ data: engagements }, { data: invites }, { data: trainers }] = await Promise.all([
-    admin
-      .from('training_engagements')
-      .select('engagement_id, training_title, workflow_status, created_at, start_date, end_date, trainers_needed')
-      .order('created_at', { ascending: false })
-      .limit(1000),
-    admin
-      .from('engagement_trainers')
-      .select('engagement_id, trainer_id, status, invited_at, responded_at')
-      .limit(5000),
+  // ── Source data ────────────────────────────────────────────────
+  // Activity tables are scoped to the caller's own workshops for
+  // non-admins; the trainer pool stays statewide (reference data).
+  let engQuery = admin
+    .from('training_engagements')
+    .select('engagement_id, training_title, workflow_status, created_at, start_date, end_date, trainers_needed')
+    .order('created_at', { ascending: false })
+    .limit(1000)
+  if (!isAdmin) engQuery = engQuery.eq('created_by', user.id)
+  const { data: engagements } = await engQuery
+
+  const engs = engagements ?? []
+  const ownEngIds = engs.map(e => e.engagement_id as string)
+
+  let inviteQuery = admin
+    .from('engagement_trainers')
+    .select('engagement_id, trainer_id, status, invited_at, responded_at')
+    .limit(5000)
+  if (!isAdmin) inviteQuery = inviteQuery.in('engagement_id', ownEngIds)
+
+  const [{ data: invites }, { data: trainers }] = await Promise.all([
+    inviteQuery,
     admin
       .from('master_trainers')
       .select('trainer_id, trainer_name, ppd_district')
@@ -60,10 +71,9 @@ export default async function AdminAnalyticsPage() {
       .limit(5000),
   ])
 
-  const engs      = engagements ?? []
-  const inviteRows = invites ?? []
+  const inviteRows  = invites ?? []
   const trainerRows = trainers ?? []
-  const engById   = Object.fromEntries(engs.map(e => [e.engagement_id as string, e]))
+  const engById     = Object.fromEntries(engs.map(e => [e.engagement_id as string, e]))
 
   // ── Overview ────────────────────────────────────────────────────
   const realWorkshops = engs.filter(e => e.workflow_status !== 'Draft')
@@ -106,17 +116,12 @@ export default async function AdminAnalyticsPage() {
     }
   }
 
-  // ── KPI: cost-estimate accuracy (needs actuals from claims) ────
-  // Shared builder (src/lib/analyticsCost.ts) — also feeds the CSV/PDF
-  // cost-export route so the screen and the download always agree.
-  // Accuracy/MAE/total tiles are computed client-side from these rows
-  // so they follow the workshop filter and live actual-cost edits.
-  const costRows = await buildCostAccuracyRows(admin)
+  // ── KPI: cost-estimate accuracy ────────────────────────────────
+  // Same builder feeds the CSV/PDF cost-export route so screen and
+  // download always agree; scoped to owned workshops for non-admins.
+  const costRows = await buildCostAccuracyRows(admin, isAdmin ? undefined : user.id)
 
-  // ── KPI: talent-desert coverage per district ────────────────────
-  // Coverage counts against the canonical 30 PPD districts only —
-  // spelling variants are merged and junk values ('-') ignored, so a
-  // data typo can never surface as an extra "covered" district.
+  // ── KPI: talent-desert coverage per district (STATEWIDE) ────────
   const trainersByDistrict: Record<string, number> = {}
   for (const d of CANONICAL_PPD_DISTRICTS) trainersByDistrict[d] = 0
   for (const tr of trainerRows) {
@@ -163,25 +168,12 @@ export default async function AdminAnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <header className="flex items-center justify-between border-b border-border bg-white px-6 py-3 shadow-sm">
-        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted">{currentProfile.full_name ?? user.email} · Admin</span>
-          <Link href="/admin/users" className="text-sm text-royal-blue hover:underline">{t.admin.usersTitle}</Link>
-          <Link href="/admin/database" className="text-sm text-royal-blue hover:underline">{t.adminDb.title}</Link>
-          <Link href="/admin/audit" className="text-sm text-royal-blue hover:underline">{t.audit.title}</Link>
-          <Link href="/dashboard" className="text-sm text-royal-blue hover:underline">{t.dashboard.title}</Link>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-6 py-8 space-y-6">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-slate">{t.analytics.title}</h1>
-          <p className="mt-1 text-sm text-muted">{t.analytics.subtitle}</p>
-        </div>
-        <AnalyticsClient data={data} />
-      </main>
+    <div className="mx-auto max-w-6xl px-6 py-8 space-y-6">
+      <div>
+        <h1 className="font-display text-2xl font-semibold text-slate">{t.analytics.title}</h1>
+        <p className="mt-1 text-sm text-muted">{isAdmin ? t.analytics.subtitle : t.analytics.subtitleUser}</p>
+      </div>
+      <AnalyticsClient data={data} scoped={!isAdmin} />
     </div>
   )
 }

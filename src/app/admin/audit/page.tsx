@@ -76,7 +76,7 @@ export default async function AdminAuditPage() {
           <span className="text-sm text-muted">{currentProfile.full_name ?? user.email} · Admin</span>
           <Link href="/admin/users" className="text-sm text-royal-blue hover:underline">{t.admin.usersTitle}</Link>
           <Link href="/admin/database" className="text-sm text-royal-blue hover:underline">{t.adminDb.title}</Link>
-          <Link href="/admin/analytics" className="text-sm text-royal-blue hover:underline">{t.analytics.title}</Link>
+          <Link href="/analytics" className="text-sm text-royal-blue hover:underline">{t.analytics.title}</Link>
           <Link href="/dashboard" className="text-sm text-royal-blue hover:underline">{t.dashboard.title}</Link>
         </div>
       </header>

@@ -4,9 +4,10 @@
 // (invalid / expired / already-submitted / success). Same
 // icon-in-tinted-circle idiom as /invitations/responded.
 
+import { useState } from 'react'
 import Image from 'next/image'
-import { useLanguage } from '@/i18n/LanguageProvider'
-import { LanguageToggle } from '@/components/LanguageToggle'
+import { getTranslations } from '@/i18n'
+import { PublicLanguageToggle } from '@/components/PublicLanguageToggle'
 
 export type FeedbackStatusKind = 'invalid' | 'expired' | 'already_submitted' | 'success'
 type Tone = 'success' | 'warning' | 'error'
@@ -17,9 +18,9 @@ const TONE_STYLES: Record<Tone, { bg: string; icon: string; path: string }> = {
   error:   { bg: 'bg-[#EF4444]/10', icon: 'text-[#EF4444]', path: 'M6 18L18 6M6 6l12 12' },
 }
 
-export function FeedbackStatus({ state }: { state: FeedbackStatusKind }) {
-  const { t } = useLanguage()
-  const f = t.feedback
+export function FeedbackStatus({ state, initialLocale = 'bm' }: { state: FeedbackStatusKind; initialLocale?: 'en' | 'bm' }) {
+  const [locale, setLocale] = useState<'en' | 'bm'>(initialLocale)
+  const f = getTranslations(locale).feedback
 
   const copy: Record<FeedbackStatusKind, { title: string; message: string; tone: Tone }> = {
     success:           { title: f.successTitle,          message: f.successMessage,          tone: 'success' },
@@ -36,7 +37,7 @@ export function FeedbackStatus({ state }: { state: FeedbackStatusKind }) {
       {/* Trainers are not system users — the logo is deliberately not a link. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
         <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
-        <LanguageToggle />
+        <PublicLanguageToggle value={locale} onChange={setLocale} />
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6 py-16">

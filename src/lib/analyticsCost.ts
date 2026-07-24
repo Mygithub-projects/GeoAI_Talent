@@ -27,12 +27,22 @@ export interface CostAccuracyRow {
   actual_note:    string | null
 }
 
-export async function buildCostAccuracyRows(admin: AdminClient): Promise<CostAccuracyRow[]> {
+// `scopeUserId` — when set, restricts the rows to workshops that user
+// created (the /analytics user-scoping rule). Left undefined for the
+// admin/statewide view. Everything downstream keys off the scoped
+// engagement set, so a user can never see another user's cost data.
+export async function buildCostAccuracyRows(
+  admin: AdminClient,
+  scopeUserId?: string | null,
+): Promise<CostAccuracyRow[]> {
+  let engQuery = admin
+    .from('training_engagements')
+    .select('engagement_id, training_title, workflow_status, start_date, end_date, dynamic_venue_name, venue_school_code')
+    .limit(1000)
+  if (scopeUserId) engQuery = engQuery.eq('created_by', scopeUserId)
+
   const [{ data: engagements }, { data: confirmedInvites }] = await Promise.all([
-    admin
-      .from('training_engagements')
-      .select('engagement_id, training_title, workflow_status, start_date, end_date, dynamic_venue_name, venue_school_code')
-      .limit(1000),
+    engQuery,
     admin
       .from('engagement_trainers')
       .select('engagement_id, trainer_id')
@@ -41,7 +51,10 @@ export async function buildCostAccuracyRows(admin: AdminClient): Promise<CostAcc
   ])
 
   const engById = Object.fromEntries((engagements ?? []).map(e => [e.engagement_id as string, e]))
-  const pairs = confirmedInvites ?? []
+  // When scoped, drop confirmed pairs whose engagement isn't in the
+  // owned set (the invites query itself is unscoped for admin parity).
+  const scopedEngIds = new Set(Object.keys(engById))
+  const pairs = (confirmedInvites ?? []).filter(i => scopeUserId ? scopedEngIds.has(i.engagement_id as string) : true)
   const confirmedEngIds = [...new Set(pairs.map(i => i.engagement_id as string))]
   if (confirmedEngIds.length === 0) return []
 

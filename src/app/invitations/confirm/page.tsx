@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifySignedToken, hashToken } from '@/lib/tokenSigning'
 import { resolveVenueName } from '@/lib/email'
+import { getTrainerLocale } from '@/lib/trainerLocale'
 import { ConfirmClient } from './_components/ConfirmClient'
 
 export const dynamic = 'force-dynamic'
@@ -58,6 +59,7 @@ export default async function InvitationConfirmPage({
   if (!engagement) redirect('/invitations/responded?result=invalid')
 
   const venueName = await resolveVenueName(admin, engagement!)
+  const locale = await getTrainerLocale(admin, tokenRow.engagement_id, tokenRow.trainer_id)
 
   return (
     <ConfirmClient
@@ -68,6 +70,7 @@ export default async function InvitationConfirmPage({
       venueName={venueName}
       startDate={engagement!.start_date ?? null}
       endDate={engagement!.end_date ?? null}
+      initialLocale={locale}
     />
   )
 }

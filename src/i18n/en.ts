@@ -178,6 +178,7 @@ export interface Translations {
     selectedLabel: string
     finalizeAndInviteSelected: string
     reviewModalTitle: string
+    emailLanguage: string
     subjectLabel: string
     bodyLabel: string
     mergeFieldsHint: string
@@ -227,6 +228,7 @@ export interface Translations {
     rescheduleNoTrainers: string
     cancelWorkshop: string
     cancelConfirm: string
+    cancelResultTitle: string
     deleteDraft: string
     deleteConfirm: string
   }
@@ -271,6 +273,8 @@ export interface Translations {
   analytics: {
     title: string
     subtitle: string
+    subtitleUser: string
+    scopedNote: string
     noData: string
     tileTrainers: string
     tileWorkshops: string
@@ -903,6 +907,7 @@ export const en: Translations = {
     selectedLabel: 'selected',
     finalizeAndInviteSelected: 'Finalize & Invite Selected',
     reviewModalTitle: 'Review invitation email',
+    emailLanguage: 'Email language',
     subjectLabel: 'Subject',
     bodyLabel: 'Message',
     mergeFieldsHint: 'Use {{trainer_name}} to personalize the greeting — the training details card and Accept/Decline buttons are added automatically below your message.',
@@ -951,7 +956,8 @@ export const en: Translations = {
     rescheduleEmailFailed: 'email NOT delivered',
     rescheduleNoTrainers: 'No invited trainers to notify — dates updated.',
     cancelWorkshop: 'Cancel workshop',
-    cancelConfirm: 'Cancel this workshop? All outstanding invitation links will be invalidated. This keeps the history but cannot be re-opened.',
+    cancelConfirm: 'Cancel this workshop? All outstanding invitation links will be invalidated, and confirmed or invited trainers will be emailed an apology. This keeps the history but cannot be re-opened.',
+    cancelResultTitle: 'Workshop cancelled — apology emails sent',
     deleteDraft: 'Delete draft',
     deleteConfirm: 'Permanently delete this draft workshop? Nothing was sent to trainers. This cannot be undone.',
   },
@@ -996,6 +1002,8 @@ export const en: Translations = {
   analytics: {
     title: 'Analytics & KPIs',
     subtitle: 'Programme KPIs computed live from system data. All figures are deterministic — nothing here is estimated by AI.',
+    subtitleUser: 'KPIs for the workshops you created. All figures are deterministic — nothing here is estimated by AI.',
+    scopedNote: 'Activity and cost figures below cover only workshops you created. The trainer pool and district-coverage figures are statewide reference data.',
     noData: 'No data yet.',
     tileTrainers: 'Active trainers',
     tileWorkshops: 'Workshops',

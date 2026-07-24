@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   // ── 3. Parse body ────────────────────────────────────────────
-  let body: { engagement_id?: string; trainer_ids?: string[]; subject?: string; message?: string }
+  let body: { engagement_id?: string; trainer_ids?: string[]; subject?: string; message?: string; lang?: string }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
@@ -54,6 +54,10 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     )
   }
+  // Coordinator's chosen email language (defaults BM). Persisted on each
+  // engagement_trainers row (migration 028) so every later automated
+  // email + the trainer's landing pages stay in this language.
+  const lang: 'en' | 'bm' = body.lang === 'en' ? 'en' : 'bm'
 
   const admin = createAdminClient()
 
@@ -122,14 +126,28 @@ export async function POST(req: NextRequest) {
   // ── 8. Per-trainer: insert row, tokens, send email, audit log ─
   const sent: SentResult[] = []
   await Promise.all(trainers.map(async (trainer) => {
-    const { error: rowErr } = await admin
+    let { error: rowErr } = await admin
       .from('engagement_trainers')
       .insert({
         engagement_id,
         trainer_id: trainer.trainer_id,
         status: 'Pending Invite',
         invited_by: user.id,
+        locale: lang,
       })
+    // Self-heal if migration 028 (the locale column) hasn't been applied
+    // yet — retry the insert without it so inviting never breaks; the
+    // email still goes out in `lang`, downstream emails just default BM.
+    if (rowErr && /locale/i.test(rowErr.message ?? '')) {
+      ;({ error: rowErr } = await admin
+        .from('engagement_trainers')
+        .insert({
+          engagement_id,
+          trainer_id: trainer.trainer_id,
+          status: 'Pending Invite',
+          invited_by: user.id,
+        }))
+    }
     if (rowErr) {
       console.error('[invite] engagement_trainers insert error', trainer.trainer_id, rowErr)
       skipped.push({ trainer_id: trainer.trainer_id, reason: 'insert_failed' })
@@ -156,7 +174,7 @@ export async function POST(req: NextRequest) {
 
     const mergedSubject = mergeTemplate(subject, { trainer_name: trainer.trainer_name, accept_url: acceptUrl, decline_url: declineUrl })
     const { html: mergedHtml } = buildInvitationEmail({
-      lang:          'bm',
+      lang,
       customMessage: mergeTemplate(message, { trainer_name: trainer.trainer_name }),
       trainingTitle,
       venueName,

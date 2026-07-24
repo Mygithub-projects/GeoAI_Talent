@@ -131,7 +131,7 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
     { href: '/talent',      label: t.map.navTalent,       icon: <UsersMapIcon />,       adminOnly: false, badge: 0 },
     { href: '/trainer-feedback', label: t.map.navTrainerFeedback, icon: <StarFeedbackIcon />, adminOnly: false, badge: 0 },
     { href: '/admin/database',  label: t.map.navDatabase,  icon: <DatabaseIcon />,      adminOnly: true, badge: 0 },
-    { href: '/admin/analytics', label: t.map.navAnalytics, icon: <ChartIcon />,         adminOnly: true, badge: 0 },
+    { href: '/analytics', label: t.map.navAnalytics, icon: <ChartIcon />,         adminOnly: false, badge: 0 },
     { href: '/admin/audit',     label: t.map.navAudit,     icon: <ClipboardListIcon />, adminOnly: true, badge: 0 },
   ]
 

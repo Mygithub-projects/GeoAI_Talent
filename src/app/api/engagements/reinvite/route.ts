@@ -6,6 +6,7 @@ import { sendEmail, resolveVenueName } from '@/lib/email'
 import { buildInvitationEmail, defaultInvitationMessage } from '@/lib/emailContent'
 import { mergeTemplate } from '@/lib/emailTemplate'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
+import { getTrainerLocale } from '@/lib/trainerLocale'
 
 const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
@@ -96,9 +97,11 @@ export async function POST(req: NextRequest) {
   const acceptUrl  = `${SITE_URL}/api/invitations/respond?token=${encodeURIComponent(acceptToken)}`
   const declineUrl = `${SITE_URL}/api/invitations/respond?token=${encodeURIComponent(declineToken)}`
 
+  // Resend in the language chosen when the trainer was first invited
+  const lang = await getTrainerLocale(admin, engagement_id, trainer_id)
   const { subject, html } = buildInvitationEmail({
-    lang:          'bm',
-    customMessage: mergeTemplate(defaultInvitationMessage('bm'), { trainer_name: trainer.trainer_name as string }),
+    lang,
+    customMessage: mergeTemplate(defaultInvitationMessage(lang), { trainer_name: trainer.trainer_name as string }),
     trainingTitle: (engagement.training_title as string | null) ?? 'Program Latihan',
     venueName,
     startDate:     engagement.start_date as string | null,

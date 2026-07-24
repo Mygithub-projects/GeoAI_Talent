@@ -1,10 +1,10 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { useLanguage } from '@/i18n/LanguageProvider'
-import { LanguageToggle } from '@/components/LanguageToggle'
+import { getTranslations, isValidLocale, DEFAULT_LOCALE } from '@/i18n'
+import { PublicLanguageToggle } from '@/components/PublicLanguageToggle'
 
 type Result = 'accepted' | 'declined' | 'expired' | 'already_used' | 'invalid'
 type Tone = 'success' | 'warning' | 'error'
@@ -16,9 +16,13 @@ const TONE_STYLES: Record<Tone, { bg: string; icon: string; path: string }> = {
 }
 
 function ResponseContent() {
-  const { t } = useLanguage()
   const searchParams = useSearchParams()
   const result = (searchParams.get('result') as Result) || 'invalid'
+  // Language carried from the invitation (set by the respond route); the
+  // trainer can still switch. Falls back to the default when absent.
+  const langParam = searchParams.get('lang')
+  const [locale, setLocale] = useState<'en' | 'bm'>(isValidLocale(langParam) ? langParam : DEFAULT_LOCALE)
+  const t = getTranslations(locale)
 
   const copy: Record<Result, { title: string; message: string; tone: Tone }> = {
     accepted:     { title: t.invitationResponse.acceptedTitle,    message: t.invitationResponse.acceptedMessage,    tone: 'success' },
@@ -37,7 +41,7 @@ function ResponseContent() {
           is no "return to the app" affordance anywhere on this page. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
         <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
-        <LanguageToggle />
+        <PublicLanguageToggle value={locale} onChange={setLocale} />
       </div>
 
       <div className="flex flex-1 items-center justify-center px-6 py-16">

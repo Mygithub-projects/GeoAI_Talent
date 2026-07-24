@@ -7,6 +7,7 @@ import { sendEmail, resolveVenueName } from '@/lib/email'
 import { buildRescheduleEmail } from '@/lib/emailContent'
 import { recomputeEngagementStatus } from '@/lib/engagementRollup'
 import { validateInviteDateRange } from '@/lib/dateValidation'
+import { getTrainerLocales } from '@/lib/trainerLocale'
 
 // Edit a workshop's details (creator or admin).
 // - training_title / dynamic_venue_name: editable while not Cancelled
@@ -196,6 +197,8 @@ export async function POST(req: NextRequest) {
       // `|| undefined` so a blank TEST_INBOX_EMAIL= line falls back to the
       // trainer's own email ('' is not nullish, so ?? alone would keep it)
       const testInbox = process.env.TEST_INBOX_EMAIL || undefined
+      // Each trainer's chosen invite language (migration 028; defaults BM)
+      const locales = await getTrainerLocales(admin, engagement_id)
 
       affected = await Promise.all((trainers ?? []).map(async trainer => {
         const result: RescheduledTrainer = {
@@ -221,7 +224,7 @@ export async function POST(req: NextRequest) {
         const declineUrl = `${SITE_URL}/api/invitations/respond?token=${encodeURIComponent(declineToken)}`
 
         const { subject, html } = buildRescheduleEmail({
-          lang:          'bm',
+          lang:          locales.get(trainer.trainer_id as string) ?? 'bm',
           trainerName:   trainer.trainer_name as string,
           trainingTitle: (updated.training_title as string | null) ?? 'Program Latihan',
           venueName,

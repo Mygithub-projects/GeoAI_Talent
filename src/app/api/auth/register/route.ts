@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { STATEWIDE, PPD_DISTRICTS } from '@/lib/districts'
+import { friendlyAuthError } from '@/lib/authErrorMessage'
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN ?? 'moe.gov.my'
 const VALID_DISTRICTS = new Set<string>([STATEWIDE, ...PPD_DISTRICTS])
@@ -72,7 +73,11 @@ export async function POST(request: Request) {
   })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 })
+    const status = (error.status ?? 0) >= 500 ? 502 : 400
+    return NextResponse.json(
+      { error: friendlyAuthError(error, 'We couldn’t complete your registration right now. Please double-check your email address and try again — if the problem continues, contact an administrator.') },
+      { status },
+    )
   }
 
   // handle_new_user (DB trigger) has already inserted the profile row with

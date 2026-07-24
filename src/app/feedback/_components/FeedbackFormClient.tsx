@@ -6,8 +6,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { useLanguage } from '@/i18n/LanguageProvider'
-import { LanguageToggle } from '@/components/LanguageToggle'
+import { getTranslations } from '@/i18n'
+import { PublicLanguageToggle } from '@/components/PublicLanguageToggle'
 import { Textarea } from '@/components/ui/Textarea'
 import { RatingInput } from './RatingInput'
 import { FeedbackStatus, type FeedbackStatusKind } from './FeedbackStatus'
@@ -16,6 +16,7 @@ import type { FeedbackTokenContext } from '@/lib/feedbackToken'
 interface Props {
   token:   string
   context: Omit<FeedbackTokenContext, 'token_id'>
+  initialLocale: 'en' | 'bm'   // the language the invitation email used
 }
 
 const fmtDate = (iso: string | null) =>
@@ -28,9 +29,9 @@ type RatingKey =
   | 'rating_communication'
   | 'rating_overall'
 
-export function FeedbackFormClient({ token, context }: Props) {
-  const { t } = useLanguage()
-  const f = t.feedback
+export function FeedbackFormClient({ token, context, initialLocale }: Props) {
+  const [locale, setLocale] = useState<'en' | 'bm'>(initialLocale)
+  const f = getTranslations(locale).feedback
 
   const [ratings, setRatings] = useState<Record<RatingKey, number | null>>({
     rating_content:         null,
@@ -46,7 +47,7 @@ export function FeedbackFormClient({ token, context }: Props) {
   const [error, setError]                   = useState('')
   const [terminal, setTerminal]             = useState<FeedbackStatusKind | null>(null)
 
-  if (terminal) return <FeedbackStatus state={terminal} />
+  if (terminal) return <FeedbackStatus state={terminal} initialLocale={locale} />
 
   const ratingFields: Array<{ key: RatingKey; label: string }> = [
     { key: 'rating_content',         label: f.ratingContent },
@@ -111,7 +112,7 @@ export function FeedbackFormClient({ token, context }: Props) {
       {/* Trainers are not system users — the logo is deliberately not a link. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
         <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
-        <LanguageToggle />
+        <PublicLanguageToggle value={locale} onChange={setLocale} />
       </div>
 
       <div className="flex flex-1 justify-center px-4 py-10">

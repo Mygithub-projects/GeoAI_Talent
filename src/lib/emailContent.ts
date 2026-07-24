@@ -717,6 +717,46 @@ export function buildFeedbackRequestEmail(p: FeedbackRequestEmailParams): { subj
   })
 }
 
+// ── Workshop cancellation apology (2026-07-22) ───────────────────
+// Sent to every Confirmed or Pending-invite trainer when a workshop is
+// cancelled from the Calendar. A pure receipt — NO links (trainer-facing
+// public rule: their emails carry no route into the app).
+
+export interface CancellationEmailParams {
+  lang:          'en' | 'bm'
+  trainerName:   string
+  trainingTitle: string
+  venueName:     string
+  startDate:     string | null    // ISO date YYYY-MM-DD (the cancelled dates)
+  endDate:       string | null
+}
+
+export function buildCancellationEmail(p: CancellationEmailParams): { subject: string; html: string } {
+  const isBm = p.lang === 'bm'
+  const dateRange = formatDateRange(p.startDate, p.endDate, p.lang)
+
+  return buildSimpleEmail({
+    lang:         p.lang,
+    subject:      isBm ? `Bengkel Dibatalkan: ${p.trainingTitle}` : `Workshop Cancelled: ${p.trainingTitle}`,
+    sectionTitle: isBm ? 'BENGKEL DIBATALKAN' : 'WORKSHOP CANCELLED',
+    barColor:     '#B91C1C',   // clear "cancelled" signal — not the amber alert bar
+    paragraphs: [
+      escapeHtml(isBm ? `Tuan/Puan ${p.trainerName},` : `Dear ${p.trainerName},`),
+      isBm
+        ? 'Dukacita dimaklumkan bahawa program latihan di bawah telah <strong>dibatalkan</strong>. Maaf atas segala kesulitan yang timbul; sebarang kemas kini akan dimaklumkan kemudian.'
+        : 'We regret to inform you that the training programme below has been <strong>cancelled</strong>. Sorry for the inconvenience caused; any update will be further informed.',
+    ],
+    detailRows: [
+      { label: isBm ? 'Program' : 'Programme', value: escapeHtml(p.trainingTitle), strong: true },
+      { label: isBm ? 'Tempat' : 'Venue',      value: escapeHtml(p.venueName) },
+      { label: isBm ? 'Tarikh' : 'Dates',      value: dateRange },
+    ],
+    footerLine2: isBm
+      ? 'Emel ini dijana secara automatik — tiada balasan diperlukan.'
+      : 'This is an automated notification — no reply is needed.',
+  })
+}
+
 export function buildInvitationEmail(p: InvitationEmailParams): { subject: string; html: string } {
   const isBm = p.lang === 'bm'
 

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const { data: profile } = await supabase
     .from('profiles').select('role').eq('user_id', user.id).single()
 
-  let body: { engagement_id?: string; trainer_ids?: string[] }
+  let body: { engagement_id?: string; trainer_ids?: string[]; lang?: string }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
   if (!engagement_id || !trainer_ids?.length) {
     return NextResponse.json({ error: 'engagement_id and trainer_ids are required' }, { status: 400 })
   }
+  // Draft language chosen in the modal (defaults BM) — the default
+  // subject/message come back in this language.
+  const lang: 'en' | 'bm' = body.lang === 'en' ? 'en' : 'bm'
 
   const admin = createAdminClient()
 
@@ -67,8 +70,8 @@ export async function POST(req: NextRequest) {
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
 
   return NextResponse.json({
-    subject:       defaultInvitationSubject('bm', trainingTitle),
-    message:       defaultInvitationMessage('bm'),
+    subject:       defaultInvitationSubject(lang, trainingTitle),
+    message:       defaultInvitationMessage(lang),
     venue_name:    venueName,
     training_title: trainingTitle,
     start_date:    engagement.start_date,

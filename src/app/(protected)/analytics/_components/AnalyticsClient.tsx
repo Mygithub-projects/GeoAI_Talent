@@ -84,7 +84,7 @@ const fmtMyr = (v: number) => `RM ${v.toLocaleString('en-MY', { maximumFractionD
 
 // ── Main component ────────────────────────────────────────────────
 
-export function AnalyticsClient({ data }: { data: AnalyticsData }) {
+export function AnalyticsClient({ data, scoped = false }: { data: AnalyticsData; scoped?: boolean }) {
   const { t } = useLanguage()
   const a = t.analytics
 
@@ -176,6 +176,14 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Scoped-view note — activity/cost are the caller's own workshops,
+          trainer-pool + coverage stay statewide reference data. */}
+      {scoped && (
+        <div style={{ background: '#EFF5FF', border: '1px solid #BFD6F5', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#1E4A8A' }}>
+          {a.scopedNote}
+        </div>
+      )}
 
       {/* ── Overview tiles ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
@@ -350,7 +358,7 @@ export function AnalyticsClient({ data }: { data: AnalyticsData }) {
         <p style={{ margin: '12px 0 0', fontSize: 11, color: '#94A3B8' }}>{a.costNote}</p>
       </SectionCard>
 
-      {/* ── KPI: talent-desert coverage ── */}
+      {/* ── KPI: talent-desert coverage (STATEWIDE) ── */}
       <SectionCard title={a.covTitle} subtitle={a.covSubtitle.replace('{n}', String(cov.desertThreshold))}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
           {cov.districts.map(d => (

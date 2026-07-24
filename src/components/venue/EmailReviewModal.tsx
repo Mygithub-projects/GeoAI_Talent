@@ -31,7 +31,12 @@ interface EmailReviewModalProps {
 }
 
 export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers, onSent }: EmailReviewModalProps) {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
+  // Language the invitation email is sent in — defaults to the
+  // coordinator's current UI language, overridable per send. Persisted
+  // on each engagement_trainers row so every later automated email +
+  // the trainer's landing pages follow the same choice (migration 028).
+  const [emailLang, setEmailLang] = useState<'en' | 'bm'>(locale)
   const [subject, setSubject]   = useState('')
   const [message, setMessage]   = useState('')
   const [venueName, setVenueName]         = useState('')
@@ -54,10 +59,13 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
     }
     setPreviewId(selectedTrainers[0]?.trainer_id ?? '')
     setLoadingDraft(true)
+    // Re-runs when emailLang changes so the default subject/message come
+    // back in the chosen language (an edit made before switching is
+    // replaced by the new-language default — switching implies wanting it).
     fetch('/api/engagements/invite/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ engagement_id: engagementId, trainer_ids: selectedTrainers.map(t => t.trainer_id) }),
+      body: JSON.stringify({ engagement_id: engagementId, trainer_ids: selectedTrainers.map(t => t.trainer_id), lang: emailLang }),
     })
       .then(async res => {
         const data = await res.json()
@@ -75,14 +83,14 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load draft'))
       .finally(() => setLoadingDraft(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, engagementId])
+  }, [open, engagementId, emailLang])
 
   if (!open) return null
 
   const previewTrainerName = selectedTrainers.find(t => t.trainer_id === previewId)?.trainer_name ?? ''
   const mergedPreview = expiresAt
     ? buildInvitationEmail({
-        lang:          'bm',
+        lang:          emailLang,
         customMessage: mergeTemplate(message, { trainer_name: previewTrainerName }),
         trainingTitle,
         venueName,
@@ -101,7 +109,7 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
       const res = await fetch('/api/engagements/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ engagement_id: engagementId, trainer_ids: trainerIds, subject, message }),
+        body: JSON.stringify({ engagement_id: engagementId, trainer_ids: trainerIds, subject, message, lang: emailLang }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -150,6 +158,29 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
                 <p style={{ fontSize: 12, color: '#64748B' }}>{t.common.loading}</p>
               ) : (
                 <>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      {t.batchInvite.emailLanguage}
+                    </label>
+                    <div style={{ display: 'inline-flex', border: '1px solid #E2E8F0', borderRadius: 8, overflow: 'hidden' }} role="group" aria-label={t.batchInvite.emailLanguage}>
+                      {(['en', 'bm'] as const).map(lng => (
+                        <button
+                          key={lng}
+                          type="button"
+                          onClick={() => setEmailLang(lng)}
+                          aria-pressed={emailLang === lng}
+                          style={{
+                            fontSize: 12, fontWeight: 700, padding: '6px 16px', border: 'none', cursor: 'pointer',
+                            background: emailLang === lng ? '#1E63C4' : 'white',
+                            color:      emailLang === lng ? 'white' : '#64748B',
+                          }}
+                        >
+                          {lng === 'en' ? 'English' : 'Bahasa Melayu'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div style={{ marginBottom: 14 }}>
                     <label style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#64748B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                       {t.batchInvite.subjectLabel}

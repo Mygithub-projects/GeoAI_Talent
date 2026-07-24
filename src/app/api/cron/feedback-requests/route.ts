@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { generateSignedToken, hashToken } from '@/lib/tokenSigning'
 import { sendEmail } from '@/lib/email'
 import { buildFeedbackRequestEmail } from '@/lib/emailContent'
+import { getLocalesByRowId } from '@/lib/trainerLocale'
 
 // Phase 9 — the daily feedback-request dispatcher, invoked headlessly
 // by the Supabase pg_cron + pg_net job (migration 027). NO user session
@@ -63,6 +64,10 @@ export async function POST(req: NextRequest) {
     : { data: [] }
   const schoolMap = Object.fromEntries((schools ?? []).map(s => [s.school_code as string, s.school_name as string]))
 
+  // Each trainer's chosen invite language (migration 028; defaults BM),
+  // so the feedback email months later matches what they first received.
+  const locales = await getLocalesByRowId(admin, rows.map(r => r.engagement_trainer_id))
+
   const sent: Array<Record<string, unknown>> = []
   const skipped: Array<Record<string, unknown>> = []
 
@@ -106,7 +111,7 @@ export async function POST(req: NextRequest) {
     const feedbackUrl = `${SITE_URL}/feedback?token=${encodeURIComponent(token)}`
 
     const { subject, html } = buildFeedbackRequestEmail({
-      lang:          'bm',  // matches the BM default of every other automated trainer email
+      lang:          locales.get(row.engagement_trainer_id) ?? 'bm',
       trainerName:   row.trainer_name ?? '',
       trainingTitle: row.training_title ?? 'Program Latihan',
       venueName,

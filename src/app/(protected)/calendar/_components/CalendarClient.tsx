@@ -58,6 +58,8 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   const [actionBusy, setActionBusy] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [rescheduleResult, setRescheduleResult] = useState<RescheduleResultRow[] | null>(null)
+  // Per-trainer apology-email outcomes after a whole-workshop cancel
+  const [cancelResult, setCancelResult] = useState<RescheduleResultRow[] | null>(null)
 
   const fetchMonth = useCallback(async (y: number, m: number, opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true)
@@ -125,6 +127,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
     setEditing(false)
     setActionError(null)
     setRescheduleResult(null)
+    setCancelResult(null)
   }
 
   // Returns the parsed response body on success, null on failure
@@ -182,7 +185,15 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   async function handleCancelWorkshop() {
     if (!selected) return
     if (!window.confirm(t.calendar.cancelConfirm)) return
-    if (await postAction('/api/engagements/cancel', { engagement_id: selected.engagement_id })) {
+    const data = await postAction('/api/engagements/cancel', { engagement_id: selected.engagement_id })
+    if (!data) return
+    const cancelled = (data.cancelled as RescheduleResultRow[] | undefined) ?? []
+    if (cancelled.length > 0) {
+      // Keep the modal open to show per-trainer apology-email results;
+      // refresh the grid behind it so the Cancelled status appears at once
+      setCancelResult(cancelled)
+      fetchMonth(year, month)
+    } else {
       closeDetails()
       fetchMonth(year, month)
     }
@@ -395,16 +406,16 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
               </h2>
             </div>
             <div style={{ padding: 20, fontSize: 13, color: '#15233A' }}>
-              {rescheduleResult ? (
+              {(rescheduleResult || cancelResult) ? (
                 <>
                   <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: '#0E2F57' }}>
-                    {t.calendar.rescheduleResultTitle}
+                    {cancelResult ? t.calendar.cancelResultTitle : t.calendar.rescheduleResultTitle}
                   </p>
-                  {rescheduleResult.length === 0 ? (
+                  {(rescheduleResult ?? cancelResult)!.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 12, color: '#94A3B8' }}>{t.calendar.rescheduleNoTrainers}</p>
                   ) : (
                     <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                      {rescheduleResult.map(r => (
+                      {(rescheduleResult ?? cancelResult)!.map(r => (
                         <li key={r.trainer_id} style={{ fontSize: 12, padding: '4px 0', color: r.email_delivered ? '#0F766E' : '#92400E' }}>
                           {r.email_delivered
                             ? <>✓ {r.trainer_name} — {t.calendar.rescheduleEmailOk}</>

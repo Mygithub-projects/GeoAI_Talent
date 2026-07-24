@@ -163,16 +163,19 @@ export async function GET(req: NextRequest) {
     .select('role, status, full_name')
     .eq('user_id', user.id)
     .single()
-  if (profile?.role !== 'admin' || profile?.status !== 'active') {
+  // Open to any active user (same as the /analytics page); non-admins
+  // are scoped to their own workshops so the file matches their screen.
+  if (profile?.status !== 'active') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  const isAdmin = profile.role === 'admin'
 
   const sp = req.nextUrl.searchParams
   const format = sp.get('format') === 'pdf' ? 'pdf' : 'csv'
   const engagementId = sp.get('engagement_id')
 
   const admin = createAdminClient()
-  let rows = await buildCostAccuracyRows(admin)
+  let rows = await buildCostAccuracyRows(admin, isAdmin ? undefined : user.id)
   if (engagementId) rows = rows.filter(r => r.engagement_id === engagementId)
 
   await admin.from('audit_logs').insert({
@@ -184,6 +187,7 @@ export async function GET(req: NextRequest) {
       format,
       engagement_id: engagementId ?? 'all',
       row_count:     rows.length,
+      scope:         isAdmin ? 'all' : 'mine',
       actor_name:    profile.full_name ?? null,
     },
   })

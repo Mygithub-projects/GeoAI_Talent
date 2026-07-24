@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { validateFeedbackToken } from '@/lib/feedbackToken'
+import { getTrainerLocale } from '@/lib/trainerLocale'
 import { FeedbackFormClient } from './_components/FeedbackFormClient'
 import { FeedbackStatus } from './_components/FeedbackStatus'
 
@@ -28,5 +29,8 @@ export default async function FeedbackPage({
   // (which it already has in the URL) and the display context.
   const { token_id: _tokenId, ...context } = result.context
   void _tokenId
-  return <FeedbackFormClient token={token!} context={context} />
+  // Open in the language this trainer's invitation used (migration 028;
+  // defaults BM) so the whole flow reads consistently.
+  const initialLocale = await getTrainerLocale(admin, context.engagement_id, context.trainer_id)
+  return <FeedbackFormClient token={token!} context={context} initialLocale={initialLocale} />
 }
