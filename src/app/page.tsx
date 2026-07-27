@@ -44,10 +44,10 @@ export default async function LandingPage() {
         <Image
           src="/logo_dark.svg"
           alt="GeoAI Talent Agent"
-          width={180}
-          height={44}
+          width={145}
+          height={48}
           priority
-          className="h-9 w-auto"
+          className="h-12 w-auto"
         />
         <LanguageToggle />
       </header>

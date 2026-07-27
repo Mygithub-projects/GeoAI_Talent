@@ -36,10 +36,10 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <Image
             src="/logo_dark.svg"
             alt="GeoAI Talent Agent"
-            width={200}
-            height={48}
+            width={194}
+            height={64}
             priority
-            className="h-10 w-auto"
+            className="h-16 w-auto"
           />
         </div>
 
@@ -86,9 +86,9 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
             <Image
               src="/logo_horizontal.svg"
               alt="GeoAI Talent Agent"
-              width={160}
-              height={36}
-              className="h-8 w-auto"
+              width={121}
+              height={40}
+              className="h-10 w-auto"
             />
           </div>
           <div className="ml-auto">

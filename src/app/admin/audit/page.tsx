@@ -71,7 +71,7 @@ export default async function AdminAuditPage() {
   return (
     <div className="min-h-screen bg-surface">
       <header className="flex items-center justify-between border-b border-border bg-white px-6 py-3 shadow-sm">
-        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
+        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={109} height={36} className="h-8 w-auto" />
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted">{currentProfile.full_name ?? user.email} · Admin</span>
           <Link href="/admin/users" className="text-sm text-royal-blue hover:underline">{t.admin.usersTitle}</Link>

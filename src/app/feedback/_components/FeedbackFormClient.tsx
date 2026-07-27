@@ -111,7 +111,7 @@ export function FeedbackFormClient({ token, context, initialLocale }: Props) {
     <div className="flex min-h-screen flex-col bg-surface">
       {/* Trainers are not system users — the logo is deliberately not a link. */}
       <div className="flex items-center justify-between border-b border-border bg-white px-6 py-4">
-        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={160} height={36} className="h-8 w-auto" />
+        <Image src="/logo_horizontal.svg" alt="GeoAI Talent Agent" width={109} height={36} className="h-8 w-auto" />
         <PublicLanguageToggle value={locale} onChange={setLocale} />
       </div>
 

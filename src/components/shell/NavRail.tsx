@@ -148,9 +148,9 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
       <div className={`flex h-14 items-center border-b border-white/10 px-3 ${expanded ? 'gap-3' : 'justify-center'}`}>
         <div className="relative flex-shrink-0">
           <Image
-            src={expanded ? '/logo_horizontal.svg' : '/logo_icon.svg'}
+            src={expanded ? '/logo_dark.svg' : '/logo_icon.svg'}
             alt="GeoAI Talent Agent"
-            width={expanded ? 120 : 28}
+            width={expanded ? 85 : 28}
             height={28}
             className="h-7 w-auto object-left"
             priority
