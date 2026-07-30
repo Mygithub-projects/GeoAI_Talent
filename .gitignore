@@ -52,8 +52,3 @@ Thumbs.db
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-
-mkdir -p db/seed
-# copy MASTER_LIST_V2_GeoAI_CLEANED.xlsx into db/seed/
-# confirm git doesn't see it:
-git status    # should NOT show the .xlsx
