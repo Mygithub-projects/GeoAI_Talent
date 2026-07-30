@@ -233,6 +233,11 @@ export interface Translations {
     venueLabel: string
     datesLabel: string
     statusLabel: string
+    statusDraft: string
+    statusPendingInvite: string
+    statusConfirmed: string
+    statusDeclined: string
+    statusCancelled: string
     confirmedWord: string
     trainersLabel: string
     noTrainersYet: string
@@ -993,6 +998,11 @@ export const en: Translations = {
     venueLabel: 'Venue',
     datesLabel: 'Dates',
     statusLabel: 'Status',
+    statusDraft: 'Draft',
+    statusPendingInvite: 'Pending Invite',
+    statusConfirmed: 'Confirmed',
+    statusDeclined: 'Declined',
+    statusCancelled: 'Cancelled',
     confirmedWord: 'confirmed',
     trainersLabel: 'Invited trainers',
     noTrainersYet: 'No trainers invited yet.',

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import type { CalendarEngagement } from '@/app/api/calendar/route'
+import type { Translations } from '@/i18n'
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   'Confirmed':      { bg: '#CCFBF1', border: '#12B5AC', text: '#0F766E' },
@@ -21,6 +22,20 @@ const TRAINER_STATUS_PILL: Record<string, { symbol: string; color: string }> = {
 function toDateOnly(s: string) {
   // Dates come as YYYY-MM-DD; construct at noon UTC to dodge TZ edges
   return new Date(`${s}T12:00:00Z`)
+}
+
+// Maps raw workflow_status DATA values to translated display labels — the same
+// pattern BacklogClient and ReportsClient use. Without this the detail panel
+// printed the raw English enum ("Pending Invite") even in BM.
+function statusLabel(status: string, t: Translations): string {
+  switch (status) {
+    case 'Draft':          return t.calendar.statusDraft
+    case 'Pending Invite': return t.calendar.statusPendingInvite
+    case 'Confirmed':      return t.calendar.statusConfirmed
+    case 'Declined':       return t.calendar.statusDeclined
+    case 'Cancelled':      return t.calendar.statusCancelled
+    default:               return status
+  }
 }
 
 interface CalendarClientProps {
@@ -311,7 +326,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
           {(['Confirmed', 'Pending Invite', ...(showDrafts ? ['Draft'] as const : [])] as string[]).map(s => (
             <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: (STATUS_COLORS[s] ?? DEFAULT_COLOR).border, display: 'inline-block' }} />
-              {s}
+              {statusLabel(s, t)}
             </span>
           ))}
         </div>
@@ -483,7 +498,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
                       background: (STATUS_COLORS[selected.workflow_status] ?? DEFAULT_COLOR).bg,
                       color: (STATUS_COLORS[selected.workflow_status] ?? DEFAULT_COLOR).text,
                     }}>
-                      {selected.workflow_status}
+                      {statusLabel(selected.workflow_status, t)}
                     </span>
                     {' '}· {selected.confirmed_count}/{selected.trainers_needed} {t.calendar.confirmedWord}
                   </p>
