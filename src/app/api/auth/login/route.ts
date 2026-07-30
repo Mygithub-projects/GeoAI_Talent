@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { friendlyAuthError } from '@/lib/authErrorMessage'
+import { AUTH_ERROR, mapSupabaseAuthError } from '@/lib/authErrorCodes'
 
 // POST /api/auth/login
 // Proxies the Supabase sign-in server-side so the browser never needs a
@@ -10,14 +11,20 @@ export async function POST(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Invalid request', code: AUTH_ERROR.UNKNOWN },
+      { status: 400 },
+    )
   }
 
   const email    = typeof body.email    === 'string' ? body.email.trim().toLowerCase() : ''
   const password = typeof body.password === 'string' ? body.password : ''
 
   if (!email || !password) {
-    return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Email and password are required', code: AUTH_ERROR.MISSING_FIELDS },
+      { status: 400 },
+    )
   }
 
   const supabase = await createClient()
@@ -26,8 +33,12 @@ export async function POST(request: Request) {
 
   if (error) {
     const status = (error.status ?? 0) >= 500 ? 502 : 401
+    // `error` stays English for non-UI callers; `code` is what the UI localises.
     return NextResponse.json(
-      { error: friendlyAuthError(error, 'Sign-in is temporarily unavailable. Please try again in a moment, or contact an administrator if the problem continues.') },
+      {
+        error: friendlyAuthError(error, 'Sign-in is temporarily unavailable. Please try again in a moment, or contact an administrator if the problem continues.'),
+        code: mapSupabaseAuthError(error),
+      },
       { status },
     )
   }

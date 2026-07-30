@@ -1,22 +1,22 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useLanguage } from '@/i18n/LanguageProvider'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { LanguageToggle } from '@/components/LanguageToggle'
+// Shared server action (also used by AppShell/TopBar for the main app's
+// sign-out) — NOT protected-route-specific despite living in that folder.
+import { signOut } from '@/app/(protected)/actions'
 
 export default function AwaitingApprovalPage() {
   const { t } = useLanguage()
-  const router = useRouter()
 
-  async function handleSignOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
+  // Sign-out runs SERVER-side. It used to call supabase.auth.signOut() from
+  // the browser, which cannot reach Supabase on restricted gov/school
+  // networks — and it failed silently: the push to /login ran regardless, but
+  // the session cookie was never cleared, so proxy.ts saw a still-valid
+  // pending session and bounced the user straight back here. The button
+  // appeared to do nothing.
 
   return (
     <div className="flex min-h-screen flex-col bg-surface">
@@ -45,9 +45,11 @@ export default function AwaitingApprovalPage() {
             {t.approval.contactAdmin}
           </div>
 
-          <Button variant="secondary" onClick={handleSignOut} className="mx-auto">
-            {t.approval.signOut}
-          </Button>
+          <form action={signOut}>
+            <Button variant="secondary" type="submit" className="mx-auto">
+              {t.approval.signOut}
+            </Button>
+          </form>
         </div>
       </div>
     </div>

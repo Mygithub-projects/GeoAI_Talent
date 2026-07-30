@@ -8,6 +8,8 @@ import { Alert } from '@/components/ui/Alert'
 import type { Translations } from '@/i18n'
 import { approveUser, changeUserRole } from './actions'
 import { STATEWIDE, PPD_DISTRICTS } from '@/lib/districts'
+import { AUTH_ERROR } from '@/lib/authErrorCodes'
+import { checkEmail, checkRequired } from '@/lib/authValidation'
 
 interface Profile {
   user_id: string
@@ -33,16 +35,30 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
   const [district, setDistrict] = useState(profile.ppd_district ?? '')
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{ fullName?: string; email?: string; district?: string }>({})
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
-    if (role === 'user' && !district) {
-      setError(t.admin.districtRequiredError)
+    // Explicit validation: the form carries noValidate, so the browser no
+    // longer blocks empty submits — and its bubbles ignored the app's language.
+    // Every problem is reported at once, against the field it belongs to.
+    const errs: { fullName?: string; email?: string; district?: string } = {}
+    if (checkRequired(fullName, AUTH_ERROR.FULL_NAME_REQUIRED)) errs.fullName = t.authErrors.FULL_NAME_REQUIRED
+    const emailCode = checkEmail(email)
+    if (emailCode) errs.email = t.authErrors[emailCode]
+    if (role === 'user' && !district) errs.district = t.admin.districtRequiredError
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      document.getElementById(
+        errs.fullName ? 'approve-fullName' : errs.email ? 'approve-email' : 'approve-district'
+      )?.focus()
       return
     }
 
+    setFieldErrors({})
     setLoading(true)
 
     try {
@@ -87,20 +103,34 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
 
             {error && <Alert variant="error" message={error} />}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* noValidate — native validation bubbles render in the BROWSER's
+                language, not the app's. We own these messages instead. */}
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <Input
+                id="approve-fullName"
                 label={t.auth.fullNameLabel}
                 type="text"
                 required
                 value={fullName}
-                onChange={e => setFullName(e.target.value)}
+                onChange={e => {
+                  setFullName(e.target.value)
+                  if (fieldErrors.fullName) setFieldErrors(p => ({ ...p, fullName: undefined }))
+                }}
+                error={fieldErrors.fullName}
               />
               <Input
+                id="approve-email"
                 label={t.auth.emailLabel}
                 type="email"
                 required
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value)
+                  if (fieldErrors.email && !checkEmail(e.target.value)) {
+                    setFieldErrors(p => ({ ...p, email: undefined }))
+                  }
+                }}
+                error={fieldErrors.email}
               />
 
               {/* Role */}
@@ -130,8 +160,21 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
                 <select
                   id="approve-district"
                   value={district}
-                  onChange={e => setDistrict(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue/30"
+                  onChange={e => {
+                    setDistrict(e.target.value)
+                    if (fieldErrors.district && e.target.value) {
+                      setFieldErrors(p => ({ ...p, district: undefined }))
+                    }
+                  }}
+                  aria-invalid={!!fieldErrors.district}
+                  aria-describedby={fieldErrors.district ? 'approve-district-error' : undefined}
+                  className={[
+                    'h-10 w-full rounded-xl border bg-white px-3 text-sm text-slate',
+                    'focus:outline-none focus:ring-2',
+                    fieldErrors.district
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-border focus:ring-royal-blue/30',
+                  ].join(' ')}
                 >
                   <option value="">— {t.admin.district} —</option>
                   <option value={STATEWIDE}>{t.admin.statewideOption}</option>
@@ -139,6 +182,11 @@ export function ApproveModal({ profile, t, isEdit = false }: Props) {
                     <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
+                {fieldErrors.district && (
+                  <p id="approve-district-error" className="text-xs text-red-600" role="alert">
+                    {fieldErrors.district}
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 pt-1">

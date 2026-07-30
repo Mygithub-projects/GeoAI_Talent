@@ -26,10 +26,16 @@ const styles: Record<AlertVariant, { wrapper: string; icon: string; iconPath: st
 interface AlertProps {
   variant?: AlertVariant
   message: string
+  /**
+   * Optional next step rendered under the message — e.g. a "Forgot password?"
+   * link on a failed sign-in. Keeps the alert actionable instead of only
+   * telling the user what went wrong.
+   */
+  action?: React.ReactNode
   className?: string
 }
 
-export function Alert({ variant = 'info', message, className = '' }: AlertProps) {
+export function Alert({ variant = 'info', message, action, className = '' }: AlertProps) {
   const s = styles[variant]
   return (
     <div
@@ -46,7 +52,10 @@ export function Alert({ variant = 'info', message, className = '' }: AlertProps)
       >
         <path strokeLinecap="round" strokeLinejoin="round" d={s.iconPath} />
       </svg>
-      <span>{message}</span>
+      <div className="flex flex-col gap-1.5">
+        <span>{message}</span>
+        {action && <div className="font-medium underline-offset-2">{action}</div>}
+      </div>
     </div>
   )
 }

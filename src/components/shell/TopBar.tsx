@@ -81,7 +81,7 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
       {/* Sign-out */}
       <button
         onClick={onSignOut}
-        className="hidden sm:block text-xs text-muted hover:text-slate transition-colors"
+        className="spec-underline hidden sm:block text-xs text-muted hover:text-slate transition-colors"
       >
         {t.common.signOut}
       </button>
@@ -92,7 +92,7 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
         data-tour="tour-button"
         aria-label={t.tour.button}
         title={t.tour.button}
-        className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-muted transition-all hover:bg-royal-blue/10 hover:text-royal-blue"
+        className="spec-edge flex items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-semibold text-muted transition-all hover:bg-royal-blue/10 hover:text-royal-blue"
       >
         <CompassIcon />
         <span className="hidden sm:inline">{t.tour.button}</span>
@@ -104,7 +104,7 @@ export function TopBar({ userName, userRole, onToggleNav, onToggleAssistant, ass
         data-tour="assistant"
         aria-label={assistantOpen ? t.map.closeAssistant : t.map.openAssistant}
         title={assistantOpen ? t.map.closeAssistant : t.map.openAssistant}
-        className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+        className={`spec-edge spec-edge--teal flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
           assistantOpen
             ? 'bg-teal text-white shadow-sm'
             : 'bg-surface text-muted hover:bg-teal/10 hover:text-teal-600 border border-border'

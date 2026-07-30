@@ -86,11 +86,11 @@ export function NotificationBell() {
         onClick={() => void toggle()}
         aria-label={t.notif.openAria}
         title={t.notif.title}
-        className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-slate transition-colors"
+        className="spec-edge relative flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-surface hover:text-slate transition-colors"
       >
         <BellIcon />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 z-10 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
             {unread > 9 ? '9+' : unread}
           </span>
         )}

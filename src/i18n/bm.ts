@@ -3,7 +3,7 @@ import type { Translations } from './en'
 export const bm: Translations = {
   common: {
     appName: 'GeoAI Talent Agent',
-    tagline: 'Jabatan Pendidikan Negeri Sarawak · Unit TMK',
+    tagline: 'Jabatan Pendidikan Negeri Sarawak · Sektor Pembelajaran',
     language: 'Bahasa',
     english: 'Bahasa Inggeris',
     malay: 'Bahasa Melayu',
@@ -53,7 +53,7 @@ export const bm: Translations = {
     footerText: 'Jabatan Pendidikan Negeri Sarawak · Program PRESTIJ',
   },
   auth: {
-    heroBadge: 'JPN Sarawak · Unit TMK',
+    heroBadge: 'Jabatan Pendidikan Negeri Sarawak · Sektor Pembelajaran',
     heroTitle: 'Platform Cadangan Jurulatih Utama Geospatial',
     chipTravel: 'Anggaran perjalanan',
     chipBilingual: 'Dwibahasa',
@@ -92,6 +92,37 @@ export const bm: Translations = {
     districtHint: 'Menetapkan paparan permulaan peta anda — anda masih boleh melihat semua daerah.',
     statewideOption: 'Seluruh negeri (mula dengan paparan penuh)',
     districtRequiredError: 'Sila pilih daerah anda.',
+  },
+  authErrors: {
+    MISSING_FIELDS: 'Sila lengkapkan semua medan yang diperlukan.',
+    EMAIL_REQUIRED: 'Sila masukkan alamat emel anda.',
+    PASSWORD_REQUIRED: 'Sila masukkan kata laluan anda.',
+    FULL_NAME_REQUIRED: 'Sila masukkan nama penuh anda.',
+    CONFIRM_REQUIRED: 'Sila masukkan semula kata laluan anda untuk pengesahan.',
+    INVALID_EMAIL: 'Ini tidak kelihatan seperti alamat emel yang sah — sila periksa kesilapan taip seperti “@” yang tertinggal.',
+    PASSWORDS_NO_MATCH: 'Kedua-dua kata laluan tidak sepadan. Sila taip semula.',
+    WEAK_PASSWORD: 'Kata laluan mesti sekurang-kurangnya 8 aksara.',
+    DISTRICT_REQUIRED: 'Sila pilih daerah anda.',
+    INVALID_CREDENTIALS:
+      'Emel dan kata laluan itu tidak sepadan dengan mana-mana akaun. Sila periksa kesilapan taip, atau tetapkan semula kata laluan anda jika anda terlupa.',
+    EMAIL_NOT_CONFIRMED:
+      'Alamat emel anda belum disahkan. Sila buka pautan pengesahan yang kami emelkan kepada anda, kemudian log masuk semula.',
+    EMAIL_NOT_ALLOWED:
+      'Alamat emel ini tidak dibenarkan untuk mendaftar. Sila gunakan alamat emel rasmi @moe.gov.my anda, atau minta pentadbir menambah anda.',
+    USER_EXISTS:
+      'Akaun untuk alamat emel ini sudah wujud. Sila log masuk, atau tetapkan semula kata laluan anda jika anda terlupa.',
+    RATE_LIMITED:
+      'Terlalu banyak percubaan. Sila tunggu beberapa minit sebelum mencuba lagi.',
+    SERVICE_UNAVAILABLE:
+      'Kami tidak dapat menghubungi perkhidmatan log masuk. Sila periksa sambungan internet anda dan cuba lagi — jika masih gagal, sila hubungi pentadbir.',
+    SESSION_EXPIRED:
+      'Pautan ini telah luput atau telah digunakan. Sila minta pautan tetapan semula kata laluan yang baharu.',
+    CALLBACK_FAILED:
+      'Pautan itu tidak sah atau telah luput. Sila minta yang baharu.',
+    UNKNOWN:
+      'Sesuatu telah tidak berjalan lancar. Sila cuba lagi — jika masalah berterusan, sila hubungi pentadbir.',
+    fixHighlighted: 'Sila perbetulkan medan yang ditandakan di bawah.',
+    requestNewLink: 'Minta pautan baharu',
   },
   approval: {
     title: 'Akaun menunggu kelulusan',

@@ -1,5 +1,6 @@
 // Split-screen auth layout: left navy hero + right white form panel
 import Image from 'next/image'
+import CursorGrid from '@/components/effects/CursorGrid'
 import { cookies } from 'next/headers'
 import { getTranslations, isValidLocale, DEFAULT_LOCALE, LOCALE_COOKIE } from '@/i18n'
 import { LanguageToggle } from '@/components/LanguageToggle'
@@ -30,6 +31,28 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           }}
         />
         <div className="geo-pattern pointer-events-none absolute inset-0" />
+
+        {/* Interactive cursor grid (desktop hero only, decorative).
+            Tracks the pointer at window level so the lattice stays alive while
+            the cursor is over the form panel — the two grids read as one field
+            across the seam. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+          <CursorGrid
+            pointerSource="window"
+            cellSize={64}
+            color="#12B5AC"
+            radius={170}
+            falloff="smooth"
+            holdTime={450}
+            fadeDuration={900}
+            lineWidth={1}
+            maxOpacity={0.9}
+            fillOpacity={0.06}
+            gridOpacity={0.05}
+            clickPulse
+            pulseSpeed={560}
+          />
+        </div>
 
         {/* Logo */}
         <div className="relative z-10">
@@ -78,9 +101,32 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
       </div>
 
       {/* ── Right form panel ─────────────────────────────── */}
-      <div className="flex flex-1 flex-col bg-surface">
+      <div className="relative flex flex-1 flex-col bg-surface">
+        {/* Same cursor grid, tuned for the light surface: royal blue instead of
+            teal and a much lower peak opacity, with matching cell size and
+            timings so it stays in step with the hero across the divider. The
+            wrapper is pointer-events-none — the form must keep every event —
+            which is why the grid listens on window instead of its container. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0">
+          <CursorGrid
+            pointerSource="window"
+            cellSize={64}
+            color="#1E63C4"
+            radius={170}
+            falloff="smooth"
+            holdTime={450}
+            fadeDuration={900}
+            lineWidth={1}
+            maxOpacity={0.3}
+            fillOpacity={0.13}
+            gridOpacity={0.028}
+            clickPulse
+            pulseSpeed={560}
+          />
+        </div>
+
         {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-4 lg:px-10">
+        <div className="relative z-10 flex items-center justify-between px-6 py-4 lg:px-10">
           {/* Mobile logo */}
           <div className="lg:hidden">
             <Image
@@ -97,7 +143,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
         </div>
 
         {/* Form area */}
-        <div className="flex flex-1 items-center justify-center px-6 pb-12 lg:px-16">
+        <div className="relative z-10 flex flex-1 items-center justify-center px-6 pb-12 lg:px-16">
           <div className="w-full max-w-sm animate-fade-in rounded-card border border-border bg-white p-6 shadow-card sm:p-8">
             {children}
           </div>

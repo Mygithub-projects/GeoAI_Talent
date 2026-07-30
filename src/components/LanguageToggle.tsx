@@ -29,7 +29,7 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
 
   return (
     <div
-      className={`inline-flex items-center gap-0.5 rounded-full border border-border bg-white p-0.5 pl-2.5 text-xs shadow-sm ${className}`}
+      className={`spec-edge inline-flex items-center gap-0.5 rounded-full border border-border bg-white p-0.5 pl-2.5 text-xs shadow-sm ${className}`}
       role="group"
       aria-label={t.common.language}
     >

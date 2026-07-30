@@ -166,3 +166,154 @@ html {
   animation: shimmer 1.6s ease-in-out infinite;
   border-radius: 8px;
 }
+
+/* Login card cursor-following border glow (added at runtime by LoginCardGlow,
+   so this only ever applies to the login card — not the other auth routes). */
+.auth-card-glow {
+  position: relative;
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-intensity: 0;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.auth-card-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1.5px;
+  border-radius: inherit;
+  background: radial-gradient(
+    240px circle at var(--glow-x) var(--glow-y),
+    rgba(18, 181, 172, calc(var(--glow-intensity) * 0.9)) 0%,
+    rgba(30, 99, 196, calc(var(--glow-intensity) * 0.55)) 38%,
+    transparent 72%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+.auth-card-glow:hover {
+  box-shadow: var(--shadow-card-hover), 0 0 22px rgba(18, 181, 172, 0.18);
+  transform: translateY(-2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card-glow {
+    transition: none;
+  }
+  .auth-card-glow:hover {
+    transform: none;
+  }
+}
+
+/* Specular edge-sweep hover for top-bar controls (CSS-only, no WebGL).
+   A bright brand highlight glides around the button's border on hover, with a
+   subtle lift + soft glow. Additive: pointer-events:none, never clips content
+   (no overflow), so badges / labels / handlers are untouched. */
+@property --sb-edge-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.spec-edge {
+  position: relative;
+  --sb-edge: 30, 99, 196; /* royal blue */
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.spec-edge--teal {
+  --sb-edge: 18, 181, 172; /* teal */
+}
+.spec-edge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--sb-edge-angle),
+    rgba(var(--sb-edge), 0) 0deg,
+    rgba(var(--sb-edge), 0) 45deg,
+    rgba(var(--sb-edge), 0.85) 72deg,
+    rgba(255, 255, 255, 0.95) 82deg,
+    rgba(var(--sb-edge), 0.85) 92deg,
+    rgba(var(--sb-edge), 0) 120deg,
+    rgba(var(--sb-edge), 0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+.spec-edge:hover::before,
+.spec-edge:focus-visible::before {
+  opacity: 1;
+  animation: sb-edge-rotate 1.6s linear infinite;
+}
+.spec-edge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px -4px rgba(var(--sb-edge), 0.4);
+}
+@keyframes sb-edge-rotate {
+  to {
+    --sb-edge-angle: 360deg;
+  }
+}
+
+/* Sign-out (bare text link): a specular highlight glides along the bottom edge. */
+.spec-underline {
+  position: relative;
+}
+.spec-underline::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(30, 99, 196, 0.9) 50%,
+    transparent
+  );
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+  pointer-events: none;
+}
+.spec-underline:hover::after,
+.spec-underline:focus-visible::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spec-edge {
+    transition: none;
+  }
+  .spec-edge:hover::before,
+  .spec-edge:focus-visible::before {
+    animation: none;
+  }
+  .spec-edge:hover {
+    transform: none;
+  }
+  .spec-underline::after {
+    transition: none;
+  }
+}

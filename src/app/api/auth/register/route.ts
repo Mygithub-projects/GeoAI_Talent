@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { STATEWIDE, PPD_DISTRICTS } from '@/lib/districts'
 import { friendlyAuthError } from '@/lib/authErrorMessage'
+import { AUTH_ERROR, mapSupabaseAuthError } from '@/lib/authErrorCodes'
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN ?? 'moe.gov.my'
 const VALID_DISTRICTS = new Set<string>([STATEWIDE, ...PPD_DISTRICTS])
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON body', code: AUTH_ERROR.UNKNOWN }, { status: 400 })
   }
 
   const email       = typeof body.email       === 'string' ? body.email.toLowerCase().trim() : ''
@@ -24,11 +25,17 @@ export async function POST(request: Request) {
   const ppdDistrict = typeof body.ppd_district === 'string' ? body.ppd_district.trim()        : ''
 
   if (!email || !password || !fullName) {
-    return NextResponse.json({ error: 'email, password, and fullName are required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'email, password, and fullName are required', code: AUTH_ERROR.MISSING_FIELDS },
+      { status: 400 },
+    )
   }
 
   if (!VALID_DISTRICTS.has(ppdDistrict)) {
-    return NextResponse.json({ error: 'Please select your district.' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Please select your district.', code: AUTH_ERROR.DISTRICT_REQUIRED },
+      { status: 400 },
+    )
   }
 
   // ── Email domain / allowlist check ───────────────────────────
@@ -46,14 +53,20 @@ export async function POST(request: Request) {
 
       if (!entry) {
         return NextResponse.json(
-          { error: `This email address is not permitted to register. Please use your official @${ALLOWED_DOMAIN} email address or contact an administrator.` },
+          {
+            error: `This email address is not permitted to register. Please use your official @${ALLOWED_DOMAIN} email address or contact an administrator.`,
+            code: AUTH_ERROR.EMAIL_NOT_ALLOWED,
+          },
           { status: 403 }
         )
       }
     } catch {
       // SUPABASE_SERVICE_KEY not configured → fail closed
       return NextResponse.json(
-        { error: `This email address is not permitted to register. Please use your official @${ALLOWED_DOMAIN} email address.` },
+        {
+          error: `This email address is not permitted to register. Please use your official @${ALLOWED_DOMAIN} email address.`,
+          code: AUTH_ERROR.EMAIL_NOT_ALLOWED,
+        },
         { status: 403 }
       )
     }
@@ -75,7 +88,10 @@ export async function POST(request: Request) {
   if (error) {
     const status = (error.status ?? 0) >= 500 ? 502 : 400
     return NextResponse.json(
-      { error: friendlyAuthError(error, 'We couldn’t complete your registration right now. Please double-check your email address and try again — if the problem continues, contact an administrator.') },
+      {
+        error: friendlyAuthError(error, 'We couldn’t complete your registration right now. Please double-check your email address and try again — if the problem continues, contact an administrator.'),
+        code: mapSupabaseAuthError(error),
+      },
       { status },
     )
   }

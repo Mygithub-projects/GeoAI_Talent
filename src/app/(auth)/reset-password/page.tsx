@@ -3,33 +3,54 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/i18n/LanguageProvider'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { AUTH_ERROR, isAuthErrorCode, type AuthErrorCode } from '@/lib/authErrorCodes'
+import { checkEmail, validateResetPassword, type ResetPasswordField } from '@/lib/authValidation'
 
 export default function ResetPasswordPage() {
   const { t } = useLanguage()
-  const [email, setEmail]   = useState('')
-  const [sent, setSent]     = useState(false)
-  const [error, setError]   = useState('')
+  const [email, setEmail]     = useState('')
+  const [sent, setSent]       = useState(false)
   const [loading, setLoading] = useState(false)
+
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ResetPasswordField, AuthErrorCode>>>({})
+  const [formError, setFormError]     = useState<AuthErrorCode | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError('')
+    setFormError(null)
+
+    const problems = validateResetPassword({ email })
+    if (Object.keys(problems).length > 0) {
+      setFieldErrors(problems)
+      document.getElementById('reset-email')?.focus()
+      return
+    }
+
+    setFieldErrors({})
     setLoading(true)
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/auth/callback?next=/update-password`,
-    })
+    try {
+      // Server-side: browsers on restricted gov/school networks cannot reach
+      // Supabase directly, so this must not call supabase-js from the client.
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
 
-    if (authError) {
-      setError(authError.message)
-    } else {
-      setSent(true)
+      if (!res.ok) {
+        setFormError(isAuthErrorCode(data.code) ? data.code : AUTH_ERROR.UNKNOWN)
+      } else {
+        // Deliberately identical whether or not the address has an account —
+        // the route never reveals which, so neither does the UI.
+        setSent(true)
+      }
+    } catch {
+      setFormError(AUTH_ERROR.SERVICE_UNAVAILABLE)
     }
     setLoading(false)
   }
@@ -43,19 +64,27 @@ export default function ResetPasswordPage() {
         <p className="text-sm text-muted">{t.auth.resetPasswordSubtitle}</p>
       </div>
 
-      {error && <Alert variant="error" message={error} />}
-      {sent  && <Alert variant="success" message={t.auth.resetPasswordSent} />}
+      {formError && <Alert variant="error" message={t.authErrors[formError]} />}
+      {sent      && <Alert variant="success" message={t.auth.resetPasswordSent} />}
 
       {!sent && (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <Input
+            id="reset-email"
             label={t.auth.emailLabel}
             type="email"
             autoComplete="email"
             required
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => {
+              setEmail(e.target.value)
+              if (fieldErrors.email) {
+                const code = checkEmail(e.target.value)
+                setFieldErrors(code ? { email: code } : {})
+              }
+            }}
             placeholder="you@moe.gov.my"
+            error={fieldErrors.email ? t.authErrors[fieldErrors.email] : undefined}
           />
           <Button type="submit" loading={loading} className="w-full mt-2">
             {t.auth.sendResetLink}

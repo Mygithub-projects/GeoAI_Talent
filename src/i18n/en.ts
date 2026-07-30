@@ -89,6 +89,30 @@ export interface Translations {
     statewideOption: string
     districtRequiredError: string
   }
+  // Keyed by AuthErrorCode (src/lib/authErrorCodes.ts). Every message states
+  // what went wrong AND what to do next.
+  authErrors: {
+    MISSING_FIELDS: string
+    EMAIL_REQUIRED: string
+    PASSWORD_REQUIRED: string
+    FULL_NAME_REQUIRED: string
+    CONFIRM_REQUIRED: string
+    INVALID_EMAIL: string
+    PASSWORDS_NO_MATCH: string
+    WEAK_PASSWORD: string
+    DISTRICT_REQUIRED: string
+    INVALID_CREDENTIALS: string
+    EMAIL_NOT_CONFIRMED: string
+    EMAIL_NOT_ALLOWED: string
+    USER_EXISTS: string
+    RATE_LIMITED: string
+    SERVICE_UNAVAILABLE: string
+    SESSION_EXPIRED: string
+    CALLBACK_FAILED: string
+    UNKNOWN: string
+    fixHighlighted: string
+    requestNewLink: string
+  }
   approval: {
     title: string
     message: string
@@ -727,7 +751,7 @@ export interface Translations {
 export const en: Translations = {
   common: {
     appName: 'GeoAI Talent Agent',
-    tagline: 'Sarawak State Education Department · ICT Unit',
+    tagline: 'Sarawak State Education Department · Learning Sector',
     language: 'Language',
     english: 'English',
     malay: 'Bahasa Melayu',
@@ -777,7 +801,7 @@ export const en: Translations = {
     footerText: 'Jabatan Pendidikan Negeri Sarawak · PRESTIJ Programme',
   },
   auth: {
-    heroBadge: 'JPN Sarawak · ICT Unit',
+    heroBadge: 'Sarawak State Education Department · Learning Sector',
     heroTitle: 'Geospatial Master Trainer Recommendation Platform',
     chipTravel: 'Travel estimates',
     chipBilingual: 'Bilingual',
@@ -816,6 +840,37 @@ export const en: Translations = {
     districtHint: "Sets where your map view starts — you'll still be able to see every district.",
     statewideOption: 'Statewide (start with the full map view)',
     districtRequiredError: 'Please select your district.',
+  },
+  authErrors: {
+    MISSING_FIELDS: 'Please fill in every required field.',
+    EMAIL_REQUIRED: 'Please enter your email address.',
+    PASSWORD_REQUIRED: 'Please enter your password.',
+    FULL_NAME_REQUIRED: 'Please enter your full name.',
+    CONFIRM_REQUIRED: 'Please re-enter your password to confirm it.',
+    INVALID_EMAIL: 'This doesn’t look like a valid email address — check for typos such as a missing “@”.',
+    PASSWORDS_NO_MATCH: 'The two passwords don’t match. Please re-type them.',
+    WEAK_PASSWORD: 'Password must be at least 8 characters.',
+    DISTRICT_REQUIRED: 'Please select your district.',
+    INVALID_CREDENTIALS:
+      'That email and password don’t match an account. Check for typos, or reset your password if you’ve forgotten it.',
+    EMAIL_NOT_CONFIRMED:
+      'Your email address hasn’t been verified yet. Open the verification link we emailed you, then sign in again.',
+    EMAIL_NOT_ALLOWED:
+      'This email address is not permitted to register. Please use your official @moe.gov.my email address, or ask an administrator to add you.',
+    USER_EXISTS:
+      'An account already exists for this email address. Sign in instead, or reset your password if you’ve forgotten it.',
+    RATE_LIMITED:
+      'Too many attempts. Please wait a few minutes before trying again.',
+    SERVICE_UNAVAILABLE:
+      'We couldn’t reach the sign-in service. Check your internet connection and try again — if it keeps failing, contact an administrator.',
+    SESSION_EXPIRED:
+      'This link has expired or has already been used. Please request a new password reset link.',
+    CALLBACK_FAILED:
+      'That link was invalid or has expired. Please request a new one.',
+    UNKNOWN:
+      'Something went wrong. Please try again — if the problem continues, contact an administrator.',
+    fixHighlighted: 'Please correct the highlighted fields below.',
+    requestNewLink: 'Request a new link',
   },
   approval: {
     title: 'Account pending approval',

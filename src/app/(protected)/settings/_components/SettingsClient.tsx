@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { AUTH_ERROR } from '@/lib/authErrorCodes'
+import { checkMatch, checkPassword, checkRequired } from '@/lib/authValidation'
 
 interface Props {
   fullName: string
@@ -24,11 +26,20 @@ export function SettingsClient({ fullName, email, role, district }: Props) {
   const [savedName, setSavedName] = useState(fullName)
   const [nameBusy, setNameBusy]   = useState(false)
   const [nameMsg, setNameMsg]     = useState<{ ok: boolean; text: string } | null>(null)
+  const [nameErr, setNameErr]     = useState('')
 
   async function saveName(e: React.FormEvent) {
     e.preventDefault()
-    setNameBusy(true)
     setNameMsg(null)
+
+    // Explicit check because the form carries noValidate (see the note on the
+    // form element) — the browser no longer blocks an empty submit for us.
+    if (checkRequired(name, AUTH_ERROR.FULL_NAME_REQUIRED)) {
+      setNameErr(t.authErrors.FULL_NAME_REQUIRED)
+      return
+    }
+    setNameErr('')
+    setNameBusy(true)
     try {
       const res = await fetch('/api/settings/profile', {
         method: 'POST',
@@ -52,12 +63,23 @@ export function SettingsClient({ fullName, email, role, district }: Props) {
   const [pw2, setPw2]         = useState('')
   const [pwBusy, setPwBusy]   = useState(false)
   const [pwMsg, setPwMsg]     = useState<{ ok: boolean; text: string } | null>(null)
+  const [pwErr, setPwErr]     = useState<{ pw?: string; pw2?: string }>({})
 
   async function savePassword(e: React.FormEvent) {
     e.preventDefault()
     setPwMsg(null)
-    if (pw.length < 8) { setPwMsg({ ok: false, text: s.passwordTooShort }); return }
-    if (pw !== pw2)    { setPwMsg({ ok: false, text: s.passwordsNoMatch }); return }
+
+    // Both problems reported at once, and attached to the field they belong to
+    // rather than only to the banner.
+    const errs: { pw?: string; pw2?: string } = {}
+    if (checkPassword(pw))       errs.pw  = s.passwordTooShort
+    if (checkMatch(pw2, pw))     errs.pw2 = s.passwordsNoMatch
+    if (errs.pw || errs.pw2) {
+      setPwErr(errs)
+      document.getElementById(errs.pw ? 'settings-password' : 'settings-confirm')?.focus()
+      return
+    }
+    setPwErr({})
     setPwBusy(true)
     try {
       const res = await fetch('/api/settings/password', {
@@ -118,14 +140,19 @@ export function SettingsClient({ fullName, email, role, district }: Props) {
         {/* ── Display name ───────────────────────────────────── */}
         <section data-tour="set-name" className={`${cardCls} animate-fade-up`}>
           <h2 className={cardHdr}>{s.nameTitle}</h2>
-          <form onSubmit={saveName} className="mt-3 space-y-3">
+          {/* noValidate — the browser's native validation bubbles render in the
+              BROWSER's language, not the app's, which breaks the single-active-
+              language rule. We own these messages instead. */}
+          <form onSubmit={saveName} className="mt-3 space-y-3" noValidate>
             <Input
+              id="settings-name"
               label={s.nameLabel}
               hint={s.nameHint}
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => { setName(e.target.value); if (nameErr) setNameErr('') }}
               maxLength={120}
               required
+              error={nameErr || undefined}
             />
             {nameMsg && <Alert variant={nameMsg.ok ? 'success' : 'error'} message={nameMsg.text} />}
             <Button type="submit" loading={nameBusy} disabled={name.trim().length === 0 || name.trim() === savedName}>
@@ -137,23 +164,36 @@ export function SettingsClient({ fullName, email, role, district }: Props) {
         {/* ── Change password ────────────────────────────────── */}
         <section data-tour="set-password" className={`${cardCls} animate-fade-up`}>
           <h2 className={cardHdr}>{s.passwordTitle}</h2>
-          <form onSubmit={savePassword} className="mt-3 space-y-3">
+          <form onSubmit={savePassword} className="mt-3 space-y-3" noValidate>
             <Input
+              id="settings-password"
               type="password"
               label={s.newPassword}
               hint={s.passwordHint}
               value={pw}
-              onChange={e => setPw(e.target.value)}
+              onChange={e => {
+                setPw(e.target.value)
+                // Re-check live once flagged; the confirm field's validity
+                // depends on this one, so clear it too when it now matches.
+                if (pwErr.pw && !checkPassword(e.target.value)) setPwErr(p => ({ ...p, pw: undefined }))
+                if (pwErr.pw2 && !checkMatch(pw2, e.target.value)) setPwErr(p => ({ ...p, pw2: undefined }))
+              }}
               autoComplete="new-password"
               required
+              error={pwErr.pw}
             />
             <Input
+              id="settings-confirm"
               type="password"
               label={s.confirmPassword}
               value={pw2}
-              onChange={e => setPw2(e.target.value)}
+              onChange={e => {
+                setPw2(e.target.value)
+                if (pwErr.pw2 && !checkMatch(e.target.value, pw)) setPwErr(p => ({ ...p, pw2: undefined }))
+              }}
               autoComplete="new-password"
               required
+              error={pwErr.pw2}
             />
             {pwMsg && <Alert variant={pwMsg.ok ? 'success' : 'error'} message={pwMsg.text} />}
             <Button type="submit" loading={pwBusy} disabled={pw.length === 0 || pw2.length === 0}>
