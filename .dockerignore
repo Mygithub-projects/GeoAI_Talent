@@ -1,0 +1,57 @@
+# ─── Secrets — MUST stay out of every image layer ───────────────
+# A file copied in and deleted later still survives in the layer history.
+.env
+.env.local
+.env.*.local
+.env.docker
+
+# ─── Node / Next.js build artefacts (rebuilt inside the image) ──
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.pnpm-store/
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Git ────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ─── Python — not part of the Next.js runtime ───────────────────
+# Ingestion (db/seed) and the FastAPI gateway are run separately.
+.venv/
+venv/
+__pycache__/
+*.pyc
+fastapi-gateway/
+requirements.txt
+
+# ─── Database — migrations run in the Supabase SQL Editor ───────
+db/
+
+# ─── Tests / coverage ───────────────────────────────────────────
+tests/
+coverage/
+.nyc_output/
+
+# ─── Docs & container config (not needed by the build) ──────────
+*.md
+Dockerfile
+docker-compose.yml
+.dockerignore
+.env.example
+.env.docker.example
+
+# ─── OS / editor / tooling ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.claude/
+*.pem
+.vercel

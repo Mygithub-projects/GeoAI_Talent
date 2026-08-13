@@ -1,0 +1,42 @@
+# =============================================================================
+#  GeoAI Talent Agent — single-service stack (Next.js app only).
+#
+#  TWO config files, because Next.js splits config across two moments:
+#
+#    .env         BUILD-time, 3 non-secret values. Compose interpolates ${...}
+#                 from this file only (it does NOT read .env.docker for that).
+#                 NEXT_PUBLIC_* is inlined into the bundle by Next at build
+#                 time — server code included — so these cannot be set later.
+#
+#    .env.docker  RUN-time, everything else: Supabase service key, SMTP, Groq,
+#                 token secrets. Injected fresh on every container start.
+#
+#  Both are gitignored and dockerignored. Copy .env.docker.example to get
+#  started — see DOCKER.md section 1.
+#
+#  The `:?` guards below abort with a readable message if .env is missing or a
+#  value is blank, rather than building an image that fails on first request.
+# =============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?missing in .env — see DOCKER.md section 1}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?missing in .env — see DOCKER.md section 1}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?missing in .env — see DOCKER.md section 1}
+    image: geoai-talent-agent:local
+    container_name: geoai-talent-agent
+    env_file:
+      - .env.docker
+    environment:
+      # Set here as well as in the Dockerfile so a stray value in .env.docker
+      # can't put the container into dev mode or bind it to localhost.
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

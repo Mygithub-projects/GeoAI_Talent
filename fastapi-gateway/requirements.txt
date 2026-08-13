@@ -1,4 +1,15 @@
+# FastAPI gateway dependencies (main.py). The gateway is committed but NOT
+# wired in — day-to-day use goes straight to the Next.js app on :3000, and the
+# Docker stack does not include it.
+#
+# Install:  pip install -r requirements.txt
+# Run:      uvicorn main:app --host 0.0.0.0 --port 8000
+#
+# httpx and websockets are pinned to the verified versions in .venv; fastapi and
+# uvicorn were never installed, so they keep floor constraints rather than a
+# pin invented here. Pin them after the first install that is actually tested.
+
 fastapi>=0.115
 uvicorn[standard]>=0.32
-httpx>=0.27
-websockets>=14
+httpx==0.28.1
+websockets==15.0.1
