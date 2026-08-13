@@ -1,0 +1,70 @@
+# Keeps the Supabase project from being paused.
+#
+# Free-tier projects pause after ~7 days without database activity. When that
+# happens the project's DNS record disappears entirely, so the app fails with
+# ENOTFOUND and looks exactly like it was deleted. This runs a trivial query
+# often enough that the inactivity timer never gets close.
+#
+# Runs daily rather than weekly on purpose: GitHub delays or drops scheduled
+# runs under load, and a twice-weekly schedule would leave a 7-day gap if one
+# run were skipped. A run takes a few seconds.
+#
+# Uses only the PUBLISHABLE key, which is designed to be exposed and is further
+# limited by RLS - the query returns no rows, it just has to reach Postgres.
+# No service key or database password is involved.
+#
+# A failure here is a useful early warning: it means the project is unreachable
+# (already paused, deleted, or credentials rotated). GitHub will email you.
+
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 02:00 UTC daily (10:00 MYT)
+  workflow_dispatch: # allows a manual run from the Actions tab
+
+permissions: {} # no repository access needed
+
+jobs:
+  ping:
+    # Only ever runs in the private primary repo. The mentor's public fork
+    # receives this file (the two repos are kept in sync) but has no secrets,
+    # so the job is skipped there instantly instead of failing and emailing them.
+    if: github.repository == 'mich88lim/GeoAI_Talent-Agent'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Query the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_PUBLISHABLE_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY secrets are not set."
+            exit 1
+          fi
+
+          # Retry a few times so one transient network blip does not raise a
+          # false alarm about the project being down.
+          for attempt in 1 2 3; do
+            code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 30 \
+              "${SUPABASE_URL}/rest/v1/skills_subjects?select=item_id&limit=1" \
+              -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" || echo 000)
+
+            if [ "$code" = "200" ]; then
+              echo "Database reachable (HTTP 200) on attempt ${attempt} - inactivity timer reset."
+              exit 0
+            fi
+
+            echo "Attempt ${attempt}: HTTP ${code}"
+            [ "$attempt" -lt 3 ] && sleep 15
+          done
+
+          echo "::error::Supabase unreachable after 3 attempts (last HTTP ${code})."
+          echo "HTTP 000 usually means DNS did not resolve - the project is probably already paused."
+          echo "Check https://supabase.com/dashboard and click Restore if so."
+          cat /tmp/body 2>/dev/null || true
+          exit 1
