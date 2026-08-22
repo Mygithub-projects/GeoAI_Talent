@@ -1,0 +1,11 @@
+Artifact Registry:
+geoai-talent
+
+Docker:
+8004 → 3000
+
+Container:
+geoai_talent
+
+Runtime environment:
+ /opt/geoai_talent/.env.docker
