@@ -1,0 +1,22 @@
+server {
+  listen 8080;
+  resolver 8.8.8.8 ipv6=off;
+
+  location /rest/v1/ {
+    rewrite ^/rest/v1/(.*)$ /$1 break;
+    proxy_pass https://${POSTGREST_HOST}/;
+    proxy_set_header Host ${POSTGREST_HOST};
+    proxy_ssl_server_name on;
+  }
+
+  location /auth/v1/ {
+    rewrite ^/auth/v1/(.*)$ /$1 break;
+    proxy_pass https://${GOTRUE_HOST}/;
+    proxy_set_header Host ${GOTRUE_HOST};
+    proxy_ssl_server_name on;
+  }
+
+  location / {
+    return 404;
+  }
+}

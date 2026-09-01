@@ -1,0 +1,31 @@
+steps:
+  - name: 'postgres:17'
+    id: dump-public
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        set -euo pipefail
+        export PGPASSWORD="${_DB_PASSWORD}"
+        pg_dump -h "${_POOLER_HOST}" -p "${_DB_PORT}" -U "${_DB_USER}" -d postgres \
+          --format=custom --no-owner --no-privileges \
+          --exclude-schema=auth --exclude-schema=storage --exclude-schema=realtime \
+          --exclude-schema=supabase_functions --exclude-schema=extensions \
+          --exclude-schema=graphql --exclude-schema=graphql_public --exclude-schema=pgsodium \
+          --exclude-schema=vault --exclude-schema=net \
+          -f /workspace/geoai-public.dump
+        pg_dump -h "${_POOLER_HOST}" -p "${_DB_PORT}" -U "${_DB_USER}" -d postgres \
+          --schema=auth --table=auth.users --data-only --no-owner --no-privileges \
+          -f /workspace/geoai-auth-users.sql
+        ls -la /workspace/
+  - name: 'gcr.io/cloud-builders/gsutil'
+    id: upload
+    args:
+      - '-m'
+      - 'cp'
+      - '/workspace/geoai-public.dump'
+      - '/workspace/geoai-auth-users.sql'
+      - 'gs://prestij-michelle-geoai-db-staging/'
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: '900s'
