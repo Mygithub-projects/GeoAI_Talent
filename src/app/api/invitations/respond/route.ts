@@ -6,6 +6,13 @@ import { sendEmail, resolveVenueName } from '@/lib/email'
 import { buildResponseAckEmail, buildTrainerResponseNotifyEmail } from '@/lib/emailContent'
 import { getTrainerLocale } from '@/lib/trainerLocale'
 
+// Redirects MUST be built against the configured public site URL, never
+// against req.url: behind Cloud Run the standalone server sees its own
+// bound address, so `new URL(path, req.url)` resolved to
+// https://0.0.0.0:3000/... and every accept/decline link dead-ended on
+// ERR_ADDRESS_INVALID in the trainer's browser (2026-09-02).
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
 // Public — reached from the accept/decline links in invitation emails.
 // No app session exists, so every read/write goes through the
 // service-role admin client.
@@ -69,9 +76,9 @@ export async function GET(req: NextRequest) {
 
   const v = await validateToken(admin, token)
   if (!v.ok) {
-    return NextResponse.redirect(new URL(`/invitations/responded?result=${v.result}`, req.url))
+    return NextResponse.redirect(new URL(`/invitations/responded?result=${v.result}`, SITE_URL))
   }
-  return NextResponse.redirect(new URL(`/invitations/confirm?token=${encodeURIComponent(token!)}`, req.url))
+  return NextResponse.redirect(new URL(`/invitations/confirm?token=${encodeURIComponent(token!)}`, SITE_URL))
 }
 
 // ── POST: the trainer pressed Confirm — record the response ─────
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
     // known, carry the trainer's language so the result page matches the
     // email (the responded page has no token to look it up itself).
     NextResponse.redirect(
-      new URL(`/invitations/responded?result=${result}${lang ? `&lang=${lang}` : ''}`, req.url),
+      new URL(`/invitations/responded?result=${result}${lang ? `&lang=${lang}` : ''}`, SITE_URL),
       303,
     )
 
@@ -203,7 +210,7 @@ export async function POST(req: NextRequest) {
         .single()
       if (creator?.email) {
         const venueName = await resolveVenueName(admin, engagement)
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+        const siteUrl = SITE_URL
         // This one goes to the coordinator (an app user), so it follows
         // THEIR own language preference, not the trainer's invite language.
         const { subject, html } = buildTrainerResponseNotifyEmail({

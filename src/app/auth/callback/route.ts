@@ -3,7 +3,11 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  // Not request.url's own origin — behind Cloud Run the standalone server
+  // sees its bound address (https://0.0.0.0:3000) and every post-callback
+  // redirect dead-ends in the user's browser (2026-09-02).
+  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
 
