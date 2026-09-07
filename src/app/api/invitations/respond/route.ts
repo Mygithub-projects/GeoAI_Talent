@@ -205,16 +205,27 @@ export async function POST(req: NextRequest) {
     if (engagement?.created_by) {
       const { data: creator } = await admin
         .from('profiles')
-        .select('full_name, email, preferred_language')
+        .select('full_name, email')
         .eq('user_id', engagement.created_by)
         .single()
       if (creator?.email) {
         const venueName = await resolveVenueName(admin, engagement)
         const siteUrl = SITE_URL
-        // This one goes to the coordinator (an app user), so it follows
-        // THEIR own language preference, not the trainer's invite language.
+        // This one goes to the COORDINATOR (an app user), not the trainer, so
+        // it follows the house rule for app-user mail rather than the invite's
+        // language. See ACCOUNT_EMAIL_LANG in src/app/admin/users/actions.ts.
+        //
+        // It used to read `creator.preferred_language`, which LOOKED like it
+        // honoured a preference but could not: profiles.preferred_language is
+        // NOT NULL DEFAULT 'bm' and is never written anywhere in the app, so
+        // the value was 'bm' for every user and this email was unconditionally
+        // Malay. Nor is a live signal available here — the POST comes from the
+        // TRAINER's browser on a public page, so there is no coordinator
+        // session or cookie to read. If a real write path for
+        // preferred_language is ever built (persisting the toggle), restore
+        // the read and backfill the column in the same change.
         const { subject, html } = buildTrainerResponseNotifyEmail({
-          lang:          creator.preferred_language === 'en' ? 'en' : 'bm',
+          lang:          'en',
           creatorName:   creator.full_name ?? '',
           trainerName:   trainer?.trainer_name ?? 'Jurulatih',
           accepted:      tokenRow.action_scope === 'accept',

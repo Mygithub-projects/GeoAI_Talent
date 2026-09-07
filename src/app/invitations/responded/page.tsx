@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { getTranslations, isValidLocale, DEFAULT_LOCALE } from '@/i18n'
+import { getTranslations, isValidLocale } from '@/i18n'
 import { PublicLanguageToggle } from '@/components/PublicLanguageToggle'
 
 type Result = 'accepted' | 'declined' | 'expired' | 'already_used' | 'invalid'
@@ -19,9 +19,17 @@ function ResponseContent() {
   const searchParams = useSearchParams()
   const result = (searchParams.get('result') as Result) || 'invalid'
   // Language carried from the invitation (set by the respond route); the
-  // trainer can still switch. Falls back to the default when absent.
+  // trainer can still switch.
+  //
+  // Falls back to 'bm' — the historical default for everything trainer-facing,
+  // same rule as src/lib/trainerLocale.ts. Deliberately NOT DEFAULT_LOCALE:
+  // that became 'en' on 2026-09-07 for the app INTERFACE, and trainers are not
+  // app users. It matters here because `?lang=` is only ever set on the success
+  // redirect — every failure path (invalid / expired / already_used) omits it,
+  // since there is no token left to read a language from — so this fallback IS
+  // the language a trainer sees whenever something has gone wrong.
   const langParam = searchParams.get('lang')
-  const [locale, setLocale] = useState<'en' | 'bm'>(isValidLocale(langParam) ? langParam : DEFAULT_LOCALE)
+  const [locale, setLocale] = useState<'en' | 'bm'>(isValidLocale(langParam) ? langParam : 'bm')
   const t = getTranslations(locale)
 
   const copy: Record<Result, { title: string; message: string; tone: Tone }> = {

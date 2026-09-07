@@ -66,6 +66,30 @@ purpose (renaming the cookie would reset every user's saved language preference)
   Mode B's left side; do not move the pill back to the corner there.
 - **Single active language + translate function.** Stored EN/BM are the translation source for fixed
   content; free text translated on demand via `/api/translate`. Never show both languages at once.
+  **DEFAULT IS ENGLISH (user decision 2026-09-07, was BM)** — `DEFAULT_LOCALE` in `src/i18n/index.ts`
+  is the single lever; the root layout and six other server components all read it as
+  `isValidLocale(cookie) ? cookie : DEFAULT_LOCALE`, and `LanguageProvider` is SEEDED from that server
+  value rather than detecting anything client-side. That is why there is no hydration mismatch — never
+  add client-side language detection. A saved preference always wins: the EN/BM toggle writes a
+  365-day `geo-talent-lang` cookie, so existing users are unaffected by the default (and you will not
+  see the new default yourself until you clear that cookie). **`DEFAULT_LOCALE` is for the APP
+  INTERFACE ONLY — never use it for anything a TRAINER reads.** Trainer emails and public trainer
+  pages stay BM by default: `src/lib/trainerLocale.ts`, the `?? 'bm'` fallbacks in the engagement
+  routes, `engagement_trainers.locale`, and the pinned `'bm'` in `src/app/invitations/responded/page.tsx`
+  (its `?lang=` param is only set on the SUCCESS redirect, so that fallback is what a trainer sees
+  whenever something has gone wrong). App-user email is English via `ACCOUNT_EMAIL_LANG`.
+  **`profiles.preferred_language` is DEAD — do not read it.** It is `NOT NULL DEFAULT 'bm'` and is
+  never written anywhere, so it always returns `'bm'` and any read is a fake preference; that is what
+  made the coordinator notification email unconditionally Malay until 2026-09-07. If a real write path
+  is ever built (persist the toggle), restore the reads and backfill the column in the same change.
+- **`/` is a router, not a page (user decision 2026-09-07).** The root redirects: `active` →
+  `/dashboard`, `pending` → `/awaiting-approval`, everyone else → `/login`. **The split-screen sign-in
+  IS the landing page** — do not reintroduce the separate welcome hero that used to render at `/`
+  (logo, tagline, four feature tiles, Sign in / Request access); the user asked for it gone. Its left
+  panel already carries the same branding and both of the hero's exits. Note `(auth)/layout.tsx` still
+  uses `landing.heroDescription` / `landing.featureMap` / `landing.featureMatching`, so those i18n keys
+  must stay. The `pathname !== '/'` exception in `proxy.ts` is what lets an active user reach `/` at
+  all — leave it, removing it is what would create a redirect loop.
 - **Security.** RLS enforced in the DB: WRITE access to schools/master_trainers/trainer_skills/
   trainer_roles is admin-only (`is_admin()`). READ access to that data is open to every active
   authenticated user regardless of role or assigned district — `profiles.ppd_district` (including the
