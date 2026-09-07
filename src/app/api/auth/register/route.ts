@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { STATEWIDE, PPD_DISTRICTS } from '@/lib/districts'
 import { friendlyAuthError } from '@/lib/authErrorMessage'
 import { AUTH_ERROR, mapSupabaseAuthError } from '@/lib/authErrorCodes'
+import { MIN_PASSWORD_LENGTH } from '@/lib/authValidation'
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_EMAIL_DOMAIN ?? 'moe.gov.my'
 const VALID_DISTRICTS = new Set<string>([STATEWIDE, ...PPD_DISTRICTS])
 
 // POST /api/auth/register
-// Validates email domain (or admin allowlist), then calls supabase.auth.signUp.
-// Server-side only — the allowlist check uses the service-role key.
+// Validates the email domain (or admin allowlist), then creates a PENDING
+// account that an administrator must approve before it can be used.
+// Server-side only — both the allowlist check and the create use the
+// service-role key.
 export async function POST(request: Request) {
   let body: { email?: unknown; password?: unknown; fullName?: unknown; ppd_district?: unknown }
   try {
@@ -72,21 +74,40 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── Sign up ───────────────────────────────────────────────────
-  const supabase = await createClient()
-  const siteUrl  = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return NextResponse.json(
+      { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, code: AUTH_ERROR.WEAK_PASSWORD },
+      { status: 400 },
+    )
+  }
 
-  const { data, error } = await supabase.auth.signUp({
+  // ── Create the account ────────────────────────────────────────
+  // Deliberately admin.createUser() with email_confirm, NOT auth.signUp().
+  //
+  // signUp() asks Supabase's BUILT-IN mailer to send a confirmation email,
+  // and for this project that mailer fails outright:
+  //   500 unexpected_failure "Error sending confirmation email"
+  // (the bounce-rate restriction). Every registration therefore 500'd and
+  // nobody could request an account at all.
+  //
+  // Skipping email confirmation loses nothing here, because this flow is
+  // approval-gated by design: the address is already restricted to
+  // @moe.gov.my or the admin allowlist (checked above), the account lands as
+  // status='pending' via handle_new_user, and it stays unusable until an
+  // administrator approves it. The admin — who sees the address before
+  // approving — IS the verification step, and a stronger one than a
+  // self-service email click.
+  const adminClient = createAdminClient()
+
+  const { data, error } = await adminClient.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: { full_name: fullName },
-      emailRedirectTo: `${siteUrl}/auth/callback`,
-    },
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
   })
 
-  if (error) {
-    const status = (error.status ?? 0) >= 500 ? 502 : 400
+  if (error || !data?.user) {
+    const status = (error?.status ?? 0) >= 500 ? 502 : 400
     return NextResponse.json(
       {
         error: friendlyAuthError(error, 'We couldn’t complete your registration right now. Please double-check your email address and try again — if the problem continues, contact an administrator.'),
@@ -97,11 +118,10 @@ export async function POST(request: Request) {
   }
 
   // handle_new_user (DB trigger) has already inserted the profile row with
-  // ppd_district=NULL by the time signUp() returns — set the district the
+  // ppd_district=NULL by the time the user is created — set the district the
   // user requested here via the service-role client (enforce_profile_rules
   // blocks this column from a plain authenticated update, by design).
-  if (data.user) {
-    const adminClient = createAdminClient()
+  {
     await adminClient
       .from('profiles')
       .update({ ppd_district: ppdDistrict })

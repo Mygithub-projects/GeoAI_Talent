@@ -68,6 +68,13 @@ export const bm: Translations = {
     resetPasswordSent: 'Semak emel anda untuk pautan penetapan semula kata laluan.',
     updatePasswordTitle: 'Tetapkan kata laluan baharu',
     updatePasswordSubtitle: 'Masukkan kata laluan baharu untuk akaun anda.',
+    setPasswordTitle: 'Tetapkan kata laluan anda',
+    setPasswordSubtitle: 'Pilih kata laluan untuk akaun GeoAI Talent Agent baharu anda.',
+    setPassword: 'Tetapkan kata laluan dan log masuk',
+    setPasswordNoToken:
+      'Pautan jemputan ini tidak sah atau telah digunakan. Sila ke halaman log masuk dan pilih “Lupa kata laluan?” untuk mendapatkan pautan baharu.',
+    registerPending:
+      'Permohonan akaun anda telah dihantar dan sedang menunggu kelulusan pentadbir. Anda akan diberitahu melalui emel setelah ia diluluskan.',
     emailLabel: 'Alamat emel',
     passwordLabel: 'Kata laluan',
     newPasswordLabel: 'Kata laluan baharu',
@@ -111,6 +118,8 @@ export const bm: Translations = {
       'Alamat emel ini tidak dibenarkan untuk mendaftar. Sila gunakan alamat emel rasmi @moe.gov.my anda, atau minta pentadbir menambah anda.',
     USER_EXISTS:
       'Akaun untuk alamat emel ini sudah wujud. Sila log masuk, atau tetapkan semula kata laluan anda jika anda terlupa.',
+    FORBIDDEN:
+      'Anda tidak lagi mempunyai kebenaran untuk melakukan ini. Akses pentadbir anda mungkin telah diubah — sila log keluar dan log masuk semula.',
     RATE_LIMITED:
       'Terlalu banyak percubaan. Sila tunggu beberapa minit sebelum mencuba lagi.',
     SERVICE_UNAVAILABLE:
@@ -694,6 +703,8 @@ export const bm: Translations = {
     addUserDescription: 'Mencipta akaun serta-merta dan menghantar emel jemputan untuk menetapkan kata laluan mereka sendiri.',
     addUserButton: 'Hantar jemputan',
     addUserSuccess: 'Jemputan telah dihantar.',
+    addUserSuccessNoEmail:
+      'Akaun telah dicipta, tetapi emel jemputan tidak dapat dihantar. Sila minta pengguna membuka halaman log masuk dan memilih “Lupa kata laluan?” untuk menetapkan kata laluan mereka.',
     reactivate: 'Aktifkan semula',
     deleteUser: 'Padam',
     deleteConfirm: 'Padam akaun ini secara kekal? Tindakan ini tidak boleh dibatalkan.',

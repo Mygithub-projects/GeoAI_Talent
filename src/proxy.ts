@@ -44,7 +44,19 @@ export async function proxy(request: NextRequest) {
   //   /feedback              — Phase 9 post-workshop feedback form
   //   /invitations/confirm   — accept/decline confirmation step (2026-07-13)
   //   /invitations/responded — response result page
-  if (pathname === '/feedback' || pathname.startsWith('/invitations/')) return response
+  //   /set-password          — admin-invite redemption; the one-time token in
+  //                            the URL is the authentication. Deliberately NOT
+  //                            in PUBLIC_PATHS: the invitee's account is
+  //                            already `active`, so the isPublic rule below
+  //                            would bounce them to /dashboard before they
+  //                            ever set a password.
+  if (
+    pathname === '/feedback' ||
+    pathname === '/set-password' ||
+    pathname.startsWith('/invitations/')
+  ) {
+    return response
+  }
 
   // API routes handle their own auth (return JSON 401, not redirects)
   if (pathname.startsWith('/api/')) return response

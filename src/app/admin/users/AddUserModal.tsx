@@ -56,12 +56,39 @@ export function AddUserModal({ t }: Props) {
     setFieldErrors({})
     setLoading(true)
     try {
-      await createUserByAdmin(email.toLowerCase().trim(), fullName.trim(), role, district || null)
-      setSuccess(t.admin.addUserSuccess)
+      const res = await createUserByAdmin(email.toLowerCase().trim(), fullName.trim(), role, district || null)
+
+      if (!res.ok) {
+        // Server rejections that belong to one specific field are shown
+        // against that field, not only in the banner — same convention as
+        // the register/login pages.
+        if (res.code === AUTH_ERROR.DISTRICT_REQUIRED) {
+          setFieldErrors({ district: t.admin.districtRequiredError })
+          document.getElementById('add-user-district')?.focus()
+        } else if (
+          res.code === AUTH_ERROR.USER_EXISTS ||
+          res.code === AUTH_ERROR.INVALID_EMAIL ||
+          res.code === AUTH_ERROR.EMAIL_REQUIRED
+        ) {
+          setFieldErrors({ email: t.authErrors[res.code] })
+          document.getElementById('add-user-email')?.focus()
+        } else {
+          setError(t.authErrors[res.code])
+        }
+        setLoading(false)
+        return
+      }
+
+      // The account exists either way; say so honestly when nothing was sent,
+      // and tell the admin what the user should do instead.
+      setSuccess(res.emailDelivered === false ? t.admin.addUserSuccessNoEmail : t.admin.addUserSuccess)
       setFullName(''); setEmail(''); setRole('user'); setDistrict('')
       router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t.common.error)
+    } catch {
+      // The action no longer throws for expected failures, so anything here is
+      // a transport problem — and err.message would be Next.js's opaque
+      // production "digest" placeholder, which is what we set out to remove.
+      setError(t.authErrors[AUTH_ERROR.SERVICE_UNAVAILABLE])
     }
     setLoading(false)
   }

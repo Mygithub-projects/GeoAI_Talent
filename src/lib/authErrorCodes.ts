@@ -25,6 +25,7 @@ export const AUTH_ERROR = {
   EMAIL_NOT_CONFIRMED: 'EMAIL_NOT_CONFIRMED',
   EMAIL_NOT_ALLOWED:   'EMAIL_NOT_ALLOWED',
   USER_EXISTS:         'USER_EXISTS',
+  FORBIDDEN:           'FORBIDDEN',
 
   // Transient / environmental
   RATE_LIMITED:        'RATE_LIMITED',

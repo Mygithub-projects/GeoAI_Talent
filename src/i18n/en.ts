@@ -65,6 +65,11 @@ export interface Translations {
     resetPasswordSent: string
     updatePasswordTitle: string
     updatePasswordSubtitle: string
+    setPasswordTitle: string
+    setPasswordSubtitle: string
+    setPassword: string
+    setPasswordNoToken: string
+    registerPending: string
     emailLabel: string
     passwordLabel: string
     newPasswordLabel: string
@@ -105,6 +110,7 @@ export interface Translations {
     EMAIL_NOT_CONFIRMED: string
     EMAIL_NOT_ALLOWED: string
     USER_EXISTS: string
+    FORBIDDEN: string
     RATE_LIMITED: string
     SERVICE_UNAVAILABLE: string
     SESSION_EXPIRED: string
@@ -681,6 +687,7 @@ export interface Translations {
     addUserDescription: string
     addUserButton: string
     addUserSuccess: string
+    addUserSuccessNoEmail: string
     reactivate: string
     deleteUser: string
     deleteConfirm: string
@@ -821,6 +828,13 @@ export const en: Translations = {
     resetPasswordSent: 'Check your email for the password reset link.',
     updatePasswordTitle: 'Set new password',
     updatePasswordSubtitle: 'Enter a new password for your account.',
+    setPasswordTitle: 'Set your password',
+    setPasswordSubtitle: 'Choose a password for your new GeoAI Talent Agent account.',
+    setPassword: 'Set password and sign in',
+    setPasswordNoToken:
+      'This invitation link is invalid or has already been used. Go to the sign-in page and choose "Forgot password?" to get a fresh link.',
+    registerPending:
+      'Your account request has been submitted and is awaiting administrator approval. You will be notified by email once it has been approved.',
     emailLabel: 'Email address',
     passwordLabel: 'Password',
     newPasswordLabel: 'New password',
@@ -864,6 +878,8 @@ export const en: Translations = {
       'This email address is not permitted to register. Please use your official @moe.gov.my email address, or ask an administrator to add you.',
     USER_EXISTS:
       'An account already exists for this email address. Sign in instead, or reset your password if you’ve forgotten it.',
+    FORBIDDEN:
+      'You no longer have permission to do this. Your administrator access may have been changed — sign out and sign in again.',
     RATE_LIMITED:
       'Too many attempts. Please wait a few minutes before trying again.',
     SERVICE_UNAVAILABLE:
@@ -1447,6 +1463,8 @@ export const en: Translations = {
     addUserDescription: 'Creates the account immediately and emails an invite link where they set their own password.',
     addUserButton: 'Send invite',
     addUserSuccess: 'Invitation sent.',
+    addUserSuccessNoEmail:
+      'Account created, but the invitation email could not be sent. Ask the user to open the sign-in page and choose “Forgot password?” to set their password.',
     reactivate: 'Reactivate',
     deleteUser: 'Delete',
     deleteConfirm: 'Permanently delete this account? This cannot be undone.',

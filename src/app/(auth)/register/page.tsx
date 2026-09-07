@@ -116,7 +116,12 @@ export default function RegisterPage() {
         <p className="text-sm text-muted">{t.auth.registerSubtitle}</p>
       </div>
 
-      {success && <Alert variant="success" message={t.auth.checkEmail} />}
+      {/* Not "check your email to verify" — registration is approval-gated,
+          not email-verified. The account is created as `pending` and an
+          administrator has to approve it before sign-in works, so telling the
+          user to look for a verification email sends them hunting for mail
+          that is never sent. */}
+      {success && <Alert variant="success" message={t.auth.registerPending} />}
       {formError && (
         <Alert
           variant="error"

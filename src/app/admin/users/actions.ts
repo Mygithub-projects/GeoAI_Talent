@@ -1,10 +1,15 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
-import { buildAccountApprovedEmail } from '@/lib/emailContent'
+import { buildAccountApprovedEmail, buildAccountInviteEmail } from '@/lib/emailContent'
+import { AUTH_ERROR, mapSupabaseAuthError } from '@/lib/authErrorCodes'
+import { checkEmail } from '@/lib/authValidation'
+import { LOCALE_COOKIE, DEFAULT_LOCALE, isValidLocale } from '@/i18n'
+import type { AdminActionResult } from '@/lib/adminActionResult'
 
 // Verify the calling user is an active admin
 async function requireAdmin() {
@@ -153,46 +158,171 @@ export async function approveUser(
   revalidatePath('/admin/users')
 }
 
-// Admin-created account: invites by email (Supabase sends a set-your-password
-// link) and activates the account immediately with the chosen role/district —
-// no separate approval step, since the admin is directly vouching for them.
+// Admin-created account: creates the account, activates it immediately with
+// the chosen role/district (no separate approval step — the admin is directly
+// vouching for them), and emails a set-your-own-password link.
+//
+// This deliberately does NOT use auth.admin.inviteUserByEmail(). That routes
+// through Supabase's BUILT-IN mailer, which returns
+//   500 unexpected_failure "Error sending invite email"
+// for this project (bounce-rate restriction) — the actual cause of the broken
+// Add-new-user button. It also pointed its redirect at /auth/callback, which
+// only understands PKCE `?code=` and could never have consumed an
+// admin-generated link. Both defects are gone: we mint the token ourselves and
+// deliver it through sendEmail(), the transport every trainer email uses.
+//
+// Returns a result instead of throwing — an uncaught error in a 'use server'
+// action is replaced by Next.js's generic "digest" placeholder in production,
+// so the admin could never see what actually failed.
 export async function createUserByAdmin(
   email: string,
   fullName: string,
   role: 'admin' | 'user',
   district: string | null
-) {
-  const { user: actor, profile: actorProfile } = await requireAdmin()
+): Promise<AdminActionResult> {
+  try {
+    const { user: actor, profile: actorProfile } = await requireAdmin()
+    const actorName = actorProfile?.full_name ?? null
 
-  if (role === 'user' && !district) {
-    throw new Error('Standard users must be assigned a district.')
+    // ── Validate before writing anything ──────────────────────
+    const emailCode = checkEmail(email)
+    if (emailCode) return { ok: false, code: emailCode }
+    if (role === 'user' && !district) {
+      return { ok: false, code: AUTH_ERROR.DISTRICT_REQUIRED }
+    }
+
+    const adminClient = createAdminClient()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
+    // Pre-check so a duplicate reports as USER_EXISTS with a "sign in
+    // instead" hint rather than an opaque provider error.
+    const { data: existing } = await adminClient
+      .from('profiles')
+      .select('user_id')
+      .eq('email', email)
+      .maybeSingle()
+    if (existing) return { ok: false, code: AUTH_ERROR.USER_EXISTS }
+
+    // ── Create the auth user ──────────────────────────────────
+    // `user_metadata` — NOT `data`, which is inviteUserByEmail's key. Getting
+    // this wrong fails SILENTLY: handle_new_user falls back to the email
+    // local-part, so the account would just carry the wrong name.
+    //
+    // `email_confirm: true` is required — nothing in this flow ever sends a
+    // confirmation email, so without it the account could never log in. It
+    // also makes the /reset-password fallback work when an invite expires.
+    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { full_name: fullName },
+    })
+
+    if (createError || !created?.user) {
+      console.error('[createUserByAdmin] createUser failed', createError)
+      return { ok: false, code: mapSupabaseAuthError(createError) }
+    }
+
+    const newUserId = created.user.id
+
+    // Compensating delete for the two steps below. Safe: profiles.user_id
+    // cascades, and a seconds-old account cannot yet be referenced by the
+    // un-cascaded FKs that make deleteUserAccount refuse. Wrapped so a failed
+    // rollback never masks the real error code.
+    const rollback = async (reason: string) => {
+      try {
+        await adminClient.auth.admin.deleteUser(newUserId)
+      } catch (err) {
+        console.error(`[createUserByAdmin] rollback after ${reason} failed`, err)
+      }
+    }
+
+    // ── Mint the set-password token ───────────────────────────
+    // type 'recovery', not 'invite'/'signup': those reject an already-existing
+    // user, which is exactly what createUser just made. Recovery is the one
+    // type meant for "set a password", and mints the session kind
+    // /api/auth/accept-invite expects.
+    const { data: link, error: linkError } = await adminClient.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: { redirectTo: `${siteUrl}/set-password` },
+    })
+
+    if (linkError || !link?.properties?.hashed_token) {
+      console.error('[createUserByAdmin] generateLink failed', linkError)
+      await rollback('generateLink')
+      return { ok: false, code: AUTH_ERROR.SERVICE_UNAVAILABLE }
+    }
+
+    // Our own origin — never link.properties.action_link, which points at
+    // <project>.supabase.co and is blocked on restricted gov networks.
+    const setPasswordUrl =
+      `${siteUrl}/set-password?token_hash=${encodeURIComponent(link.properties.hashed_token)}`
+
+    // ── Apply the admin's chosen role/district ────────────────
+    // handle_new_user already inserted the profile row; override it.
+    const { error: profileError } = await adminClient
+      .from('profiles')
+      .update({ role, ppd_district: district, status: 'active' })
+      .eq('user_id', newUserId)
+
+    if (profileError) {
+      console.error('[createUserByAdmin] profile update failed', profileError)
+      await rollback('profile update')
+      return { ok: false, code: AUTH_ERROR.UNKNOWN }
+    }
+
+    // ── Send the invitation ───────────────────────────────────
+    // No rollback on failure: the account is complete and correct, and the
+    // recipient can self-serve via "Forgot password?". Deleting a valid
+    // account because SMTP hiccuped is strictly worse. Same call as
+    // engagements/invite ("tokens are issued, log it and continue").
+    let emailDelivered = false
+    try {
+      // The recipient has no stored locale yet, so the admin's active language
+      // is the best available signal; falls back to the app default.
+      const cookieStore = await cookies()
+      const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value
+      const lang = isValidLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE
+
+      const { subject, html } = buildAccountInviteEmail({
+        lang,
+        fullName,
+        role,
+        district,
+        email,
+        setPasswordUrl,
+        invitedByName: actorName,
+        loginUrl: `${siteUrl}/login`,
+      })
+
+      emailDelivered =
+        (await sendEmail({ to: process.env.TEST_INBOX_EMAIL || email, subject, html })) !== 'console'
+    } catch (err) {
+      console.error('[createUserByAdmin] invite email failed', err)
+    }
+
+    // Best-effort — an audit failure must never undo a completed creation.
+    try {
+      await writeUserAudit(adminClient, actor.id, actorName, 'user.create', newUserId, {
+        full_name: fullName, email, role, district,
+        method: 'admin_create_own_smtp', email_delivered: emailDelivered,
+      })
+    } catch (err) {
+      console.error('[createUserByAdmin] audit insert failed', err)
+    }
+
+    revalidatePath('/admin/users')
+    return { ok: true, emailDelivered }
+  } catch (err) {
+    // requireAdmin() throws for an unauthenticated or non-admin caller;
+    // anything else reaching here is genuinely unexpected.
+    const message = err instanceof Error ? err.message : ''
+    if (/not authenticated|forbidden/i.test(message)) {
+      return { ok: false, code: AUTH_ERROR.FORBIDDEN }
+    }
+    console.error('[createUserByAdmin] unexpected failure', err)
+    return { ok: false, code: AUTH_ERROR.UNKNOWN }
   }
-
-  const adminClient = createAdminClient()
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-
-  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-    data: { full_name: fullName },
-    redirectTo: `${siteUrl}/auth/callback?next=/update-password`,
-  })
-
-  if (error) throw new Error(error.message)
-
-  // handle_new_user already inserted a profile row (role/status defaulted by
-  // the allowlist check) — override with what the admin actually chose and
-  // activate immediately.
-  const { error: profileError } = await adminClient
-    .from('profiles')
-    .update({ role, ppd_district: district, status: 'active' })
-    .eq('user_id', data.user.id)
-
-  if (profileError) throw new Error(profileError.message)
-
-  await writeUserAudit(adminClient, actor.id, actorProfile?.full_name, 'user.create', data.user.id, {
-    full_name: fullName, email, role, district, method: 'admin_invite_email',
-  })
-
-  revalidatePath('/admin/users')
 }
 
 // Change an existing user's name/email/role/district.

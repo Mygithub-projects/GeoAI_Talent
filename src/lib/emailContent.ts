@@ -624,6 +624,76 @@ export function buildAccountApprovedEmail(p: AccountApprovedEmailParams): { subj
   })
 }
 
+// ── Account invitation (admin-created account) ───────────────────
+// Sent when an admin creates an account directly from User Management.
+// Carries the set-your-own-password link minted by admin.generateLink().
+//
+// Supabase's built-in mailer is deliberately NOT used: it returned
+// 500 "Error sending invite email" for this project (bounce-rate
+// restriction), which is what broke Add-new-user. This goes through
+// sendEmail() like every other email in the app.
+//
+// The URL points at OUR origin, never at properties.action_link — that
+// resolves to <project>.supabase.co, which restricted gov/school networks
+// block. This is the recipient's first ever contact with the system, so an
+// unreachable link leaves them with no way in at all.
+
+export interface AccountInviteEmailParams {
+  lang:           'en' | 'bm'
+  fullName:       string
+  role:           'admin' | 'user'
+  district:       string | null
+  email:          string          // shown as the sign-in identifier
+  setPasswordUrl: string
+  invitedByName:  string | null
+  loginUrl:       string          // for the expired-link fallback
+}
+
+export function buildAccountInviteEmail(p: AccountInviteEmailParams): { subject: string; html: string } {
+  const isBm = p.lang === 'bm'
+  const roleLabel = p.role === 'admin'
+    ? (isBm ? 'Pentadbir' : 'Administrator')
+    : (isBm ? 'Pengguna Standard' : 'Standard User')
+
+  const invitedBy = p.invitedByName
+    ? (isBm
+        ? ` oleh <strong>${escapeHtml(p.invitedByName)}</strong>`
+        : ` by <strong>${escapeHtml(p.invitedByName)}</strong>`)
+    : ''
+
+  return buildSimpleEmail({
+    lang:         p.lang,
+    subject:      isBm ? 'Jemputan Akaun — GeoAI Talent Agent' : 'You Have Been Invited — GeoAI Talent Agent',
+    sectionTitle: isBm ? 'JEMPUTAN AKAUN' : 'ACCOUNT INVITATION',
+    // Royal Blue = the design system's INTERACTIVE colour: this email
+    // requires an action. Teal is taken by buildAccountApprovedEmail, which
+    // means "done, nothing to do" — reusing it would make the two account
+    // emails indistinguishable at a glance.
+    barColor:     '#1E63C4',
+    paragraphs: [
+      escapeHtml(isBm ? `Tuan/Puan ${p.fullName},` : `Dear ${p.fullName},`),
+      isBm
+        ? `Sebuah akaun GeoAI Talent Agent telah dicipta untuk anda${invitedBy}. Sila klik butang di bawah untuk menetapkan kata laluan anda sendiri dan mula menggunakan sistem.`
+        : `A GeoAI Talent Agent account has been created for you${invitedBy}. Use the button below to set your own password and start using the system.`,
+      // Mandatory: the token inherits Supabase's OTP expiry, but admin invites
+      // are routinely opened days later. Without this sentence every expired
+      // invite becomes a support request instead of self-service.
+      isBm
+        ? `Pautan ini untuk kegunaan sekali sahaja dan akan luput. Jika ia tidak lagi berfungsi, sila ke <a href="${p.loginUrl}" style="color:#1E63C4;">halaman log masuk</a> dan pilih “Lupa kata laluan?” untuk mendapatkan pautan baharu.`
+        : `This link is single-use and will expire. If it no longer works, go to the <a href="${p.loginUrl}" style="color:#1E63C4;">sign-in page</a> and choose “Forgot password?” to get a fresh one.`,
+    ],
+    detailRows: [
+      { label: isBm ? 'E-mel log masuk' : 'Sign-in email', value: escapeHtml(p.email), strong: true },
+      { label: isBm ? 'Peranan' : 'Role', value: escapeHtml(roleLabel) },
+      ...(p.district ? [{ label: isBm ? 'Daerah PPD' : 'PPD district', value: escapeHtml(p.district) }] : []),
+    ],
+    cta: { label: isBm ? 'Tetapkan Kata Laluan' : 'Set Your Password', url: p.setPasswordUrl },
+    footerLine2: isBm
+      ? 'Emel ini dijana secara automatik — tiada balasan diperlukan.'
+      : 'This is an automated notification — no reply is needed.',
+  })
+}
+
 // ── Trainer response notification to the coordinator (Phase 8) ───
 // Sent to the engagement creator when a trainer clicks Accept or
 // Decline — the email twin of the in-app bell notification.
