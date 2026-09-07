@@ -15,9 +15,10 @@ import {
   type UpdatePasswordField,
 } from '@/lib/authValidation'
 
-// Landing page for an admin-issued account invitation. The emailed link points
-// HERE (our own origin), never at Supabase — restricted gov/school networks
-// cannot reach Supabase directly, and this is the invitee's first ever contact
+// Landing page for both emailed password links: an admin-issued account
+// invitation, and a "Forgot password?" reset. The emailed link points HERE
+// (our own origin), never at Supabase — restricted gov/school networks cannot
+// reach Supabase directly, and for an invitee this is their first ever contact
 // with the system, so there is no fallback path if the link is unreachable.
 //
 // The token is redeemed by POST, not on page load: email security scanners
@@ -28,6 +29,10 @@ function SetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const tokenHash = searchParams.get('token_hash') ?? ''
+  // Set by the password-reset email so the audit row records which flow this
+  // was. Both flows are otherwise identical here — same token type, same
+  // redemption route — so nothing else branches on it.
+  const isReset = searchParams.get('reset') === '1'
 
   const [password, setPassword] = useState('')
   const [confirm, setConfirm]   = useState('')
@@ -65,7 +70,7 @@ function SetPasswordForm() {
       const res = await fetch('/api/auth/accept-invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token_hash: tokenHash, password }),
+        body: JSON.stringify({ token_hash: tokenHash, password, reset: isReset }),
       })
       const data = await res.json()
 

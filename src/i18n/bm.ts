@@ -69,7 +69,7 @@ export const bm: Translations = {
     updatePasswordTitle: 'Tetapkan kata laluan baharu',
     updatePasswordSubtitle: 'Masukkan kata laluan baharu untuk akaun anda.',
     setPasswordTitle: 'Tetapkan kata laluan anda',
-    setPasswordSubtitle: 'Pilih kata laluan untuk akaun GeoAI Talent Agent baharu anda.',
+    setPasswordSubtitle: 'Pilih kata laluan untuk akaun GeoAI Talent Agent anda.',
     setPassword: 'Tetapkan kata laluan dan log masuk',
     setPasswordNoToken:
       'Pautan jemputan ini tidak sah atau telah digunakan. Sila ke halaman log masuk dan pilih “Lupa kata laluan?” untuk mendapatkan pautan baharu.',

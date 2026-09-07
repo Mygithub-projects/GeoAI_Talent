@@ -5,10 +5,14 @@ import { AUTH_ERROR, mapSupabaseAuthError } from '@/lib/authErrorCodes'
 import { MIN_PASSWORD_LENGTH } from '@/lib/authValidation'
 
 // POST /api/auth/accept-invite
-// Redeems an admin-issued account invitation: verifies the one-time token from
-// the emailed link, then sets the password. Mirrors /api/auth/update-password —
-// everything runs SERVER-side so browsers on restricted gov/school networks
-// never need to reach Supabase directly.
+// Redeems a one-time password token from an emailed link, then sets the
+// password. Everything runs SERVER-side so browsers on restricted gov/school
+// networks never need to reach Supabase directly.
+//
+// Serves BOTH account flows, because both mint the same 'recovery' token and
+// both point at /set-password: an admin invitation (createUserByAdmin) and a
+// "Forgot password?" reset (/api/auth/reset-password). The route keeps its
+// original name; the `reset` flag only labels the audit row.
 //
 // Why POST and not a GET that verifies-then-redirects: email security scanners
 // prefetch GET links (the 2026-07-13 invitation bug). A GET calling verifyOtp
@@ -16,7 +20,7 @@ import { MIN_PASSWORD_LENGTH } from '@/lib/authValidation'
 // leaving every invitee behind a scanning gateway permanently locked out. Same
 // GET-validates / POST-mutates split as /invitations/confirm.
 export async function POST(request: Request) {
-  let body: { token_hash?: unknown; password?: unknown }
+  let body: { token_hash?: unknown; password?: unknown; reset?: unknown }
   try {
     body = await request.json()
   } catch {
@@ -25,6 +29,10 @@ export async function POST(request: Request) {
 
   const tokenHash = typeof body.token_hash === 'string' ? body.token_hash.trim() : ''
   const password  = typeof body.password   === 'string' ? body.password         : ''
+  // Which flow sent the reader here. Both mint the same 'recovery' token and
+  // redeem through this one route, so the flag exists only to keep the audit
+  // trail honest — it grants nothing and is never trusted for authorisation.
+  const isReset   = body.reset === true
 
   if (!tokenHash) {
     return NextResponse.json(
@@ -86,7 +94,7 @@ export async function POST(request: Request) {
       action:       'user.password_set',
       entity_type:  'profile',
       entity_id:    user.id,
-      payload_json: { self_service: true, via: 'admin_invite' },
+      payload_json: { self_service: true, via: isReset ? 'password_reset' : 'admin_invite' },
     })
   } catch (err) {
     console.error('[auth/accept-invite] audit insert failed:', err)

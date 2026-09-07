@@ -831,7 +831,10 @@ export const en: Translations = {
     updatePasswordTitle: 'Set new password',
     updatePasswordSubtitle: 'Enter a new password for your account.',
     setPasswordTitle: 'Set your password',
-    setPasswordSubtitle: 'Choose a password for your new GeoAI Talent Agent account.',
+    // Wording stays neutral between the two flows that land here: an admin
+    // invitation for a brand-new account, and a "Forgot password?" reset for
+    // an existing one. Saying "your new account" would be wrong for a reset.
+    setPasswordSubtitle: 'Choose a password for your GeoAI Talent Agent account.',
     setPassword: 'Set password and sign in',
     setPasswordNoToken:
       'This invitation link is invalid or has already been used. Go to the sign-in page and choose "Forgot password?" to get a fresh link.',

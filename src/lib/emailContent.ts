@@ -715,6 +715,62 @@ export function buildAccountInviteEmail(p: AccountInviteEmailParams): { subject:
   })
 }
 
+// ── Password reset ("Forgot password?") ──────────────────────────
+// Sent when someone requests a reset from /reset-password.
+//
+// This exists because Supabase's BUILT-IN recovery mailer is restricted for
+// this project exactly like its invite and confirmation mailers — verified
+// 2026-09-07, POST /auth/v1/recover returns
+//   500 unexpected_failure "Error sending recovery email"
+// so resetPasswordForEmail() delivered nothing and "Forgot password?" was
+// dead for every user. Same remedy as the invitation: mint the token with
+// admin.generateLink() and send it ourselves.
+//
+// Amber bar, not blue: this is a SECURITY-SENSITIVE notice that the recipient
+// may not have asked for, so it needs to read differently at a glance from
+// the routine blue invitation. It is also the one account email that must
+// tell the reader what to do if they did NOT request it.
+
+export interface PasswordResetEmailParams {
+  lang:           'en' | 'bm'
+  fullName:       string
+  email:          string          // shown so the reader knows which account
+  setPasswordUrl: string
+  loginUrl:       string
+}
+
+export function buildPasswordResetEmail(p: PasswordResetEmailParams): { subject: string; html: string } {
+  const isBm = p.lang === 'bm'
+
+  return buildSimpleEmail({
+    lang:         p.lang,
+    subject:      isBm ? 'Tetapkan Semula Kata Laluan — GeoAI Talent Agent' : 'Reset Your Password — GeoAI Talent Agent',
+    sectionTitle: isBm ? 'TETAPKAN SEMULA KATA LALUAN' : 'PASSWORD RESET',
+    barColor:     '#F2A341',
+    paragraphs: [
+      escapeHtml(isBm ? `Tuan/Puan ${p.fullName},` : `Dear ${p.fullName},`),
+      isBm
+        ? 'Kami menerima permintaan untuk menetapkan semula kata laluan akaun GeoAI Talent Agent anda. Sila klik butang di bawah untuk memilih kata laluan baharu.'
+        : 'We received a request to reset the password for your GeoAI Talent Agent account. Use the button below to choose a new one.',
+      isBm
+        ? `Pautan ini untuk kegunaan sekali sahaja dan akan luput. Jika ia tidak lagi berfungsi, sila minta pautan baharu dari <a href="${p.loginUrl}" style="color:#1E63C4;">halaman log masuk</a>.`
+        : `This link is single-use and will expire. If it no longer works, request a fresh one from the <a href="${p.loginUrl}" style="color:#1E63C4;">sign-in page</a>.`,
+      // The one thing this email must say that the invitation must not: a
+      // reset can be triggered by someone else typing your address.
+      isBm
+        ? 'Jika anda <strong>tidak</strong> membuat permintaan ini, anda boleh mengabaikan emel ini — kata laluan anda tidak akan berubah sehingga pautan di atas digunakan.'
+        : 'If you did <strong>not</strong> request this, you can ignore this email — your password will not change unless the link above is used.',
+    ],
+    detailRows: [
+      { label: isBm ? 'E-mel log masuk' : 'Sign-in email', value: escapeHtml(p.email), strong: true },
+    ],
+    cta: { label: isBm ? 'Tetapkan Kata Laluan Baharu' : 'Choose a New Password', url: p.setPasswordUrl },
+    footerLine2: isBm
+      ? 'Emel ini dijana secara automatik — tiada balasan diperlukan.'
+      : 'This is an automated notification — no reply is needed.',
+  })
+}
+
 // ── Trainer response notification to the coordinator (Phase 8) ───
 // Sent to the engagement creator when a trainer clicks Accept or
 // Decline — the email twin of the in-app bell notification.
