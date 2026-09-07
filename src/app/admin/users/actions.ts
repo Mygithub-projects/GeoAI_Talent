@@ -1,14 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { buildAccountApprovedEmail, buildAccountInviteEmail } from '@/lib/emailContent'
 import { AUTH_ERROR, mapSupabaseAuthError } from '@/lib/authErrorCodes'
 import { checkEmail } from '@/lib/authValidation'
-import { LOCALE_COOKIE, DEFAULT_LOCALE, isValidLocale } from '@/i18n'
 import type { AdminActionResult } from '@/lib/adminActionResult'
 
 // Verify the calling user is an active admin
@@ -28,6 +26,22 @@ async function requireAdmin() {
   }
   return { user, profile, supabase }
 }
+
+// The language for account emails (invitation + approval).
+//
+// ENGLISH BY DEFAULT, deliberately — user decision 2026-09-07. The recipient
+// is a new person with no stored locale, and the acting admin's UI language
+// says nothing about what the RECIPIENT reads; an admin working in BM may well
+// be inviting an English-reading officer. English is the house default for
+// account mail until there is a real per-recipient signal to use instead.
+//
+// Shared by both emails so the two halves of one account's onboarding cannot
+// arrive in different languages. This also replaced a hardcoded `lang: 'bm'`
+// in approveUser, which sent every approval email in Malay.
+//
+// NOT the same rule as trainer emails: a trainer's language comes from the
+// engagement's own locale, which the coordinator sets deliberately.
+const ACCOUNT_EMAIL_LANG = 'en' as const
 
 // Every user-management action is a sensitive action → audit_logs row
 // (same shape as the engagement/table-console writes).
@@ -87,7 +101,16 @@ async function assertNotLastAdmin(adminClient: ReturnType<typeof createAdminClie
 }
 
 // Approve (or edit) a user: set status='active', assign name/email/role/district.
-// The database trigger enforces the last-admin guard.
+//
+// This is the ONLY way an account becomes usable — both for a self-registration
+// and, since 2026-09-07, for an account an admin created via createUserByAdmin.
+// Nothing activates an account automatically.
+//
+// No assertNotLastAdmin() call is needed: the notification/email branch below
+// only fires for a pending row, and a pending account is by definition not the
+// last ACTIVE admin. (The comment that used to sit here claimed the database
+// trigger enforces the last-admin guard — it does not for these writes, since
+// enforce_profile_rules returns early for the service-role client.)
 export async function approveUser(
   userId: string,
   fullName: string,
@@ -142,12 +165,14 @@ export async function approveUser(
       console.error('[approveUser] notification insert failed', e)
     }
 
-    // Approval email (best-effort). BM default, matching the trainer
-    // email convention; TEST_INBOX_EMAIL overrides like invite routes.
+    // Approval email (best-effort); TEST_INBOX_EMAIL overrides like invite
+    // routes. See ACCOUNT_EMAIL_LANG — this used to hardcode 'bm', which sent
+    // every approval email in Malay, and it matters more now that an
+    // admin-INVITED user also gets this email as their "you can sign in" cue.
     try {
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
       const { subject, html } = buildAccountApprovedEmail({
-        lang: 'bm', fullName, role, district, loginUrl: `${siteUrl}/login`,
+        lang: ACCOUNT_EMAIL_LANG, fullName, role, district, loginUrl: `${siteUrl}/login`,
       })
       await sendEmail({ to: process.env.TEST_INBOX_EMAIL || email, subject, html })
     } catch (e) {
@@ -158,9 +183,16 @@ export async function approveUser(
   revalidatePath('/admin/users')
 }
 
-// Admin-created account: creates the account, activates it immediately with
-// the chosen role/district (no separate approval step — the admin is directly
-// vouching for them), and emails a set-your-own-password link.
+// Admin-created account: creates the account with the chosen role/district and
+// emails a set-your-own-password link.
+//
+// The account lands **status='pending' and stays unusable until an admin
+// clicks Approve** (user decision 2026-09-07: "User should not be automatedly
+// added without admin's approval"). This replaces the original behaviour, which
+// activated the account on creation on the grounds that the admin was directly
+// vouching for it — do NOT reintroduce that. The invitee can set a password
+// straight away, but the proxy confines them to /awaiting-approval until
+// approveUser() flips them to active, exactly like a self-registration.
 //
 // This deliberately does NOT use auth.admin.inviteUserByEmail(). That routes
 // through Supabase's BUILT-IN mailer, which returns
@@ -259,17 +291,29 @@ export async function createUserByAdmin(
       `${siteUrl}/set-password?token_hash=${encodeURIComponent(link.properties.hashed_token)}`
 
     // ── Apply the admin's chosen role/district ────────────────
-    // handle_new_user already inserted the profile row; override it.
-    const { error: profileError } = await adminClient
+    // handle_new_user already inserted the profile row; override role and
+    // district with what the admin actually chose.
+    //
+    // `status` is deliberately NOT in this update. The trigger already set it:
+    // 'pending' for everyone, or 'active' for an address on admin_allowlist
+    // (which it also makes an admin). Leaving the column alone therefore gates
+    // ordinary accounts behind Approve while still honouring the allowlist
+    // rule — writing status:'pending' here would DOWNGRADE an allowlisted
+    // owner account, and writing 'active' is the bug this replaced.
+    const { data: createdProfile, error: profileError } = await adminClient
       .from('profiles')
-      .update({ role, ppd_district: district, status: 'active' })
+      .update({ role, ppd_district: district })
       .eq('user_id', newUserId)
+      .select('status')
+      .single()
 
-    if (profileError) {
+    if (profileError || !createdProfile) {
       console.error('[createUserByAdmin] profile update failed', profileError)
       await rollback('profile update')
       return { ok: false, code: AUTH_ERROR.UNKNOWN }
     }
+
+    const pendingApproval = createdProfile.status === 'pending'
 
     // ── Send the invitation ───────────────────────────────────
     // No rollback on failure: the account is complete and correct, and the
@@ -278,19 +322,17 @@ export async function createUserByAdmin(
     // engagements/invite ("tokens are issued, log it and continue").
     let emailDelivered = false
     try {
-      // The recipient has no stored locale yet, so the admin's active language
-      // is the best available signal; falls back to the app default.
-      const cookieStore = await cookies()
-      const cookieLocale = cookieStore.get(LOCALE_COOKIE)?.value
-      const lang = isValidLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE
-
       const { subject, html } = buildAccountInviteEmail({
-        lang,
+        lang: ACCOUNT_EMAIL_LANG,
         fullName,
         role,
         district,
         email,
         setPasswordUrl,
+        // Tells the invitee their password is not the last step — an admin
+        // still has to approve before the first sign-in works. Without this
+        // the email would promise access the proxy is about to refuse.
+        requiresApproval: pendingApproval,
         invitedByName: actorName,
         loginUrl: `${siteUrl}/login`,
       })
@@ -301,18 +343,48 @@ export async function createUserByAdmin(
       console.error('[createUserByAdmin] invite email failed', err)
     }
 
+    // ── Tell the OTHER admins there's something to approve ────
+    // Mirrors the self-registration fan-out in /api/auth/register. The actor
+    // is excluded: they just created the row and can see it in the queue, so
+    // notifying them would only be noise. Best-effort, like every other
+    // notification insert in the app.
+    if (pendingApproval) {
+      try {
+        const { data: admins } = await adminClient
+          .from('profiles')
+          .select('user_id')
+          .eq('role', 'admin')
+          .eq('status', 'active')
+          .neq('user_id', actor.id)
+
+        if (admins?.length) {
+          const roleLabelEn = role === 'admin' ? 'Administrator' : 'Standard User'
+          const roleLabelBm = role === 'admin' ? 'Pentadbir' : 'Pengguna Standard'
+          await adminClient.from('notifications').insert(admins.map(a => ({
+            user_id:    a.user_id,
+            type:       'user_pending_approval',
+            message_en: `${actorName ?? 'An administrator'} created an account awaiting approval: ${fullName} (${email}) — ${roleLabelEn}${district ? `, district ${district}` : ''}.`,
+            message_bm: `${actorName ?? 'Seorang pentadbir'} telah membuka akaun yang menunggu kelulusan: ${fullName} (${email}) — ${roleLabelBm}${district ? `, daerah ${district}` : ''}.`,
+          })))
+        }
+      } catch (err) {
+        console.error('[createUserByAdmin] pending-approval notification failed', err)
+      }
+    }
+
     // Best-effort — an audit failure must never undo a completed creation.
     try {
       await writeUserAudit(adminClient, actor.id, actorName, 'user.create', newUserId, {
         full_name: fullName, email, role, district,
         method: 'admin_create_own_smtp', email_delivered: emailDelivered,
+        status: createdProfile.status,
       })
     } catch (err) {
       console.error('[createUserByAdmin] audit insert failed', err)
     }
 
     revalidatePath('/admin/users')
-    return { ok: true, emailDelivered }
+    return { ok: true, emailDelivered, pendingApproval }
   } catch (err) {
     // requireAdmin() throws for an unauthenticated or non-admin caller;
     // anything else reaching here is genuinely unexpected.

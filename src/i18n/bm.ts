@@ -700,11 +700,14 @@ export const bm: Translations = {
       'Untuk mendayakan MFA bagi akaun pentadbir: pergi ke Supabase Dashboard → Authentication → Policies dan dayakan "Enforce MFA for admin users". Pentadbir kemudian boleh menyediakan TOTP dalam tetapan akaun mereka.',
     addUser: '+ Tambah pengguna',
     addUserModalTitle: 'Tambah pengguna baharu',
-    addUserDescription: 'Mencipta akaun serta-merta dan menghantar emel jemputan untuk menetapkan kata laluan mereka sendiri.',
-    addUserButton: 'Hantar jemputan',
+    addUserDescription: 'Menghantar emel pautan untuk pengguna menetapkan kata laluan mereka sendiri. Akaun akan kekal dalam Menunggu kelulusan — ia tidak boleh digunakan sehingga anda meluluskannya.',
+    addUserButton: 'Cipta akaun',
     addUserSuccess: 'Jemputan telah dihantar.',
     addUserSuccessNoEmail:
       'Akaun telah dicipta, tetapi emel jemputan tidak dapat dihantar. Sila minta pengguna membuka halaman log masuk dan memilih “Lupa kata laluan?” untuk menetapkan kata laluan mereka.',
+    addUserPending: 'Akaun telah dicipta dan jemputan telah dihantar. Ia sedang menunggu di bawah Menunggu kelulusan — luluskannya sebelum pengguna ini boleh log masuk.',
+    addUserPendingNoEmail:
+      'Akaun telah dicipta dan sedang menunggu di bawah Menunggu kelulusan, tetapi emel jemputan tidak dapat dihantar. Sila minta pengguna membuka halaman log masuk dan memilih “Lupa kata laluan?” untuk menetapkan kata laluan mereka.',
     reactivate: 'Aktifkan semula',
     deleteUser: 'Padam',
     deleteConfirm: 'Padam akaun ini secara kekal? Tindakan ini tidak boleh dibatalkan.',

@@ -18,6 +18,12 @@ import type { AuthErrorCode } from './authErrorCodes'
 
 export type AdminActionResult =
   /** `emailDelivered: false` means the account exists but nothing was sent
-   *  (console fallback or a transport failure) — the admin needs telling. */
-  | { ok: true;  emailDelivered?: boolean }
+   *  (console fallback or a transport failure) — the admin needs telling.
+   *
+   *  `pendingApproval: true` means the account was created but is NOT usable
+   *  yet and is sitting in the approval queue — the normal outcome. It is
+   *  `false` only for an address on `admin_allowlist`, which `handle_new_user`
+   *  activates as an admin on insert. The two flags are independent, so the
+   *  modal picks its confirmation copy from both. */
+  | { ok: true;  emailDelivered?: boolean; pendingApproval?: boolean }
   | { ok: false; code: AuthErrorCode }

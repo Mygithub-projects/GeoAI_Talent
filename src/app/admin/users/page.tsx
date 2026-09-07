@@ -106,6 +106,14 @@ export default async function AdminUsersPage() {
                   <tr className="border-b border-border bg-surface text-xs text-muted">
                     <th className="px-4 py-3 text-left font-medium">{t.admin.name}</th>
                     <th className="px-4 py-3 text-left font-medium">{t.admin.email}</th>
+                    {/* Role and district are shown here because an admin now
+                        CHOOSES them when creating an account (they arrive
+                        pending, not active) — the approver needs to see what
+                        access they are about to grant without opening the
+                        modal. A self-registration has no role/district yet
+                        and renders as '—'. */}
+                    <th className="px-4 py-3 text-left font-medium">{t.admin.role}</th>
+                    <th className="px-4 py-3 text-left font-medium">{t.admin.district}</th>
                     <th className="px-4 py-3 text-left font-medium">{t.admin.joinedAt}</th>
                     <th className="px-4 py-3 text-left font-medium">{t.admin.status}</th>
                     <th className="px-4 py-3 text-left font-medium"></th>
@@ -116,6 +124,16 @@ export default async function AdminUsersPage() {
                     <tr key={p.user_id} className="hover:bg-surface/60 transition-colors">
                       <td className="px-4 py-3 font-medium text-slate">{p.full_name ?? '—'}</td>
                       <td className="px-4 py-3 font-mono text-xs text-muted">{p.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
+                          p.role === 'admin'
+                            ? 'bg-royal-blue/10 text-royal-blue border-royal-blue/20'
+                            : 'bg-surface text-muted border-border'
+                        }`}>
+                          {p.role === 'admin' ? t.admin.roleAdmin : t.admin.roleUser}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted">{p.ppd_district ?? '—'}</td>
                       <td className="px-4 py-3 text-muted">{new Date(p.created_at).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${statusBadge(p.status)}`}>

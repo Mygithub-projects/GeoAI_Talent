@@ -46,10 +46,15 @@ export async function proxy(request: NextRequest) {
   //   /invitations/responded — response result page
   //   /set-password          — admin-invite redemption; the one-time token in
   //                            the URL is the authentication. Deliberately NOT
-  //                            in PUBLIC_PATHS: the invitee's account is
-  //                            already `active`, so the isPublic rule below
-  //                            would bounce them to /dashboard before they
-  //                            ever set a password.
+  //                            in PUBLIC_PATHS, and this bypass is load-bearing:
+  //                            the invitee's account is `pending` until an admin
+  //                            approves it, so the status branch below would
+  //                            redirect them to /awaiting-approval before they
+  //                            ever got to set a password. (Until 2026-09-07
+  //                            admin-created accounts were `active` on creation
+  //                            and the hazard was the isPublic rule bouncing
+  //                            them to /dashboard instead — same conclusion,
+  //                            different reason.)
   if (
     pathname === '/feedback' ||
     pathname === '/set-password' ||

@@ -79,9 +79,16 @@ export function AddUserModal({ t }: Props) {
         return
       }
 
-      // The account exists either way; say so honestly when nothing was sent,
-      // and tell the admin what the user should do instead.
-      setSuccess(res.emailDelivered === false ? t.admin.addUserSuccessNoEmail : t.admin.addUserSuccess)
+      // Two independent facts to be honest about: whether the account still
+      // needs approving (it does, unless the address is on the admin
+      // allowlist), and whether the invite email actually went out. Saying
+      // only "Invitation sent." would imply the account is ready to use.
+      const pending = res.pendingApproval !== false
+      setSuccess(
+        res.emailDelivered === false
+          ? (pending ? t.admin.addUserPendingNoEmail : t.admin.addUserSuccessNoEmail)
+          : (pending ? t.admin.addUserPending        : t.admin.addUserSuccess),
+      )
       setFullName(''); setEmail(''); setRole('user'); setDistrict('')
       router.refresh()
     } catch {

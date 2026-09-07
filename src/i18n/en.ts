@@ -688,6 +688,8 @@ export interface Translations {
     addUserButton: string
     addUserSuccess: string
     addUserSuccessNoEmail: string
+    addUserPending: string
+    addUserPendingNoEmail: string
     reactivate: string
     deleteUser: string
     deleteConfirm: string
@@ -1460,11 +1462,14 @@ export const en: Translations = {
       'To enable MFA for admin accounts: go to Supabase Dashboard → Authentication → Policies and enable "Enforce MFA for admin users". Admins can then set up TOTP in their account settings.',
     addUser: '+ Add user',
     addUserModalTitle: 'Add new user',
-    addUserDescription: 'Creates the account immediately and emails an invite link where they set their own password.',
-    addUserButton: 'Send invite',
+    addUserDescription: 'Emails a link where they set their own password. The account stays in Pending approval — it cannot be used until you approve it.',
+    addUserButton: 'Create account',
     addUserSuccess: 'Invitation sent.',
     addUserSuccessNoEmail:
       'Account created, but the invitation email could not be sent. Ask the user to open the sign-in page and choose “Forgot password?” to set their password.',
+    addUserPending: 'Account created and the invitation was sent. It is waiting under Pending approval — approve it before this person can sign in.',
+    addUserPendingNoEmail:
+      'Account created and waiting under Pending approval, but the invitation email could not be sent. Ask the user to open the sign-in page and choose “Forgot password?” to set their password.',
     reactivate: 'Reactivate',
     deleteUser: 'Delete',
     deleteConfirm: 'Permanently delete this account? This cannot be undone.',

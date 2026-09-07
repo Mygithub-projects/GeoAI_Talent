@@ -92,5 +92,17 @@ export async function POST(request: Request) {
     console.error('[auth/accept-invite] audit insert failed:', err)
   }
 
-  return NextResponse.json({ success: true })
+  // Setting a password does NOT activate the account — admin-created accounts
+  // land 'pending' and stay unusable until an admin approves. Return the status
+  // so the page can send them to the waiting room instead of a dashboard the
+  // proxy would bounce them off. Same contract as POST /api/auth/login.
+  // Read on the request-scoped client (RLS profiles_select_own); default
+  // 'pending' so a missing row fails closed toward the waiting room.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('status')
+    .eq('user_id', user.id)
+    .single()
+
+  return NextResponse.json({ success: true, profileStatus: profile?.status ?? 'pending' })
 }

@@ -80,9 +80,13 @@ function SetPasswordForm() {
         return
       }
 
-      // verifyOtp set the session cookies server-side — the invitee is now
-      // signed in, and their account was activated when the admin created it.
-      router.push('/dashboard')
+      // verifyOtp set the session cookies server-side, so the invitee is now
+      // signed in — but signed in is not the same as approved. An
+      // admin-created account is 'pending' until an admin approves it, so
+      // route on the status the route hands back rather than assuming a
+      // dashboard the proxy would immediately bounce them off. Same
+      // convention as the login page.
+      router.push(data.profileStatus === 'pending' ? '/awaiting-approval' : '/dashboard')
       router.refresh()
     } catch {
       setFormError(AUTH_ERROR.SERVICE_UNAVAILABLE)

@@ -609,9 +609,12 @@ export function buildAccountApprovedEmail(p: AccountApprovedEmailParams): { subj
     barColor:     '#12B5AC',
     paragraphs: [
       escapeHtml(isBm ? `Tuan/Puan ${p.fullName},` : `Dear ${p.fullName},`),
+      // Provenance-neutral on purpose: this email now also goes to someone an
+      // admin INVITED, who set their password from a link and never
+      // "registered". Naming either route would be wrong for the other.
       isBm
-        ? 'Pendaftaran anda telah <strong>diluluskan</strong>. Anda kini boleh log masuk ke GeoAI Talent Agent menggunakan e-mel dan kata laluan yang anda daftarkan.'
-        : 'Your registration has been <strong>approved</strong>. You can now sign in to the GeoAI Talent Agent using the email and password you registered with.',
+        ? 'Akaun anda telah <strong>diluluskan</strong>. Anda kini boleh log masuk ke GeoAI Talent Agent menggunakan alamat e-mel dan kata laluan anda.'
+        : 'Your account has been <strong>approved</strong>. You can now sign in to the GeoAI Talent Agent using your email address and password.',
     ],
     detailRows: [
       { label: isBm ? 'Peranan' : 'Role', value: escapeHtml(roleLabel), strong: true },
@@ -645,6 +648,12 @@ export interface AccountInviteEmailParams {
   district:       string | null
   email:          string          // shown as the sign-in identifier
   setPasswordUrl: string
+  /** Account is `pending` — setting a password is NOT the last step, an admin
+   *  must approve before the first sign-in works. True for every ordinary
+   *  invite; false only for an allowlisted address, which is active on
+   *  creation. Suppresses the "start using the system" promise the proxy
+   *  would immediately break. */
+  requiresApproval: boolean
   invitedByName:  string | null
   loginUrl:       string          // for the expired-link fallback
 }
@@ -672,9 +681,21 @@ export function buildAccountInviteEmail(p: AccountInviteEmailParams): { subject:
     barColor:     '#1E63C4',
     paragraphs: [
       escapeHtml(isBm ? `Tuan/Puan ${p.fullName},` : `Dear ${p.fullName},`),
-      isBm
-        ? `Sebuah akaun GeoAI Talent Agent telah dicipta untuk anda${invitedBy}. Sila klik butang di bawah untuk menetapkan kata laluan anda sendiri dan mula menggunakan sistem.`
-        : `A GeoAI Talent Agent account has been created for you${invitedBy}. Use the button below to set your own password and start using the system.`,
+      p.requiresApproval
+        ? (isBm
+            ? `Sebuah akaun GeoAI Talent Agent telah dicipta untuk anda${invitedBy}. Sila klik butang di bawah untuk menetapkan kata laluan anda sendiri.`
+            : `A GeoAI Talent Agent account has been created for you${invitedBy}. Use the button below to set your own password.`)
+        : (isBm
+            ? `Sebuah akaun GeoAI Talent Agent telah dicipta untuk anda${invitedBy}. Sila klik butang di bawah untuk menetapkan kata laluan anda sendiri dan mula menggunakan sistem.`
+            : `A GeoAI Talent Agent account has been created for you${invitedBy}. Use the button below to set your own password and start using the system.`),
+      // Says plainly that the password is not the last step. Without it the
+      // invitee sets a password, gets sent to the waiting room, and reasonably
+      // concludes something is broken.
+      ...(p.requiresApproval
+        ? [isBm
+            ? 'Selepas menetapkan kata laluan, seorang pentadbir perlu <strong>meluluskan</strong> akaun anda sebelum anda boleh log masuk untuk kali pertama. Anda akan menerima e-mel kedua sebaik sahaja ia diluluskan.'
+            : 'After you set your password, an administrator still has to <strong>approve</strong> your account before your first sign-in will work. You will get a second email as soon as that is done.']
+        : []),
       // Mandatory: the token inherits Supabase's OTP expiry, but admin invites
       // are routinely opened days later. Without this sentence every expired
       // invite becomes a support request instead of self-service.
