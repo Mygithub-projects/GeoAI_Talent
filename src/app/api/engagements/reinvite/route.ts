@@ -120,7 +120,10 @@ export async function POST(req: NextRequest) {
   if (toEmail) {
     try {
       // console fallback = nothing actually delivered
-      emailDelivered = (await sendEmail({ to: toEmail, subject, html })) !== 'console'
+      emailDelivered = (await sendEmail({
+        to: toEmail, subject, html,
+        sender: { name: profile?.full_name, email: user.email },
+      })) !== 'console'
     } catch (e) { console.error('[reinvite] email error', e) }
   }
 

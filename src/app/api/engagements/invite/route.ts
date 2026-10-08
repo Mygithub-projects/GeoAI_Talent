@@ -190,7 +190,10 @@ export async function POST(req: NextRequest) {
     if (toEmail) {
       try {
         // console fallback = nothing actually delivered
-        emailDelivered = (await sendEmail({ to: toEmail, subject: mergedSubject, html: mergedHtml })) !== 'console'
+        emailDelivered = (await sendEmail({
+          to: toEmail, subject: mergedSubject, html: mergedHtml,
+          sender: { name: profile?.full_name, email: user.email },
+        })) !== 'console'
       } catch (emailErr) {
         console.error('[invite] email send error', trainer.trainer_id, emailErr)
         // Do NOT roll back — tokens are issued, log it and continue

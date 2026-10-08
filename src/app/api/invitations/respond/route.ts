@@ -136,6 +136,12 @@ export async function POST(req: NextRequest) {
     .eq('engagement_id', tokenRow.engagement_id)
     .single()
 
+  // The workshop's coordinator: the receipt below is sent on their behalf
+  // (Reply-To = them), and they get the notification email further down.
+  const { data: creator } = engagement?.created_by
+    ? await admin.from('profiles').select('full_name, email').eq('user_id', engagement.created_by).single()
+    : { data: null }
+
   // Acknowledgment email back to the trainer confirming what was recorded —
   // a pure receipt, no links or login prompt. Best-effort: a send failure
   // must never break the trainer's response flow.
@@ -155,7 +161,10 @@ export async function POST(req: NextRequest) {
         startDate:     engagement.start_date,
         endDate:       engagement.end_date,
       })
-      ackTransport = await sendEmail({ to: trainer.email, subject, html })
+      ackTransport = await sendEmail({
+        to: trainer.email, subject, html,
+        sender: { name: creator?.full_name, email: creator?.email },
+      })
     }
   } catch (err) {
     console.error('[respond] acknowledgment email failed:', err)
@@ -203,11 +212,6 @@ export async function POST(req: NextRequest) {
   // Best-effort, same rule as everything else in this route.
   try {
     if (engagement?.created_by) {
-      const { data: creator } = await admin
-        .from('profiles')
-        .select('full_name, email')
-        .eq('user_id', engagement.created_by)
-        .single()
       if (creator?.email) {
         const venueName = await resolveVenueName(admin, engagement)
         const siteUrl = SITE_URL

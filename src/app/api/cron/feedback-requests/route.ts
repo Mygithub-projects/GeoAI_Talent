@@ -68,6 +68,22 @@ export async function POST(req: NextRequest) {
   // so the feedback email months later matches what they first received.
   const locales = await getLocalesByRowId(admin, rows.map(r => r.engagement_trainer_id))
 
+  // Each workshop's coordinator — the feedback email is sent on their behalf
+  // (Reply-To = them), like the invitation that preceded it.
+  const engagementIds = [...new Set(rows.map(r => r.engagement_id))]
+  const { data: engs } = engagementIds.length > 0
+    ? await admin.from('training_engagements').select('engagement_id, created_by').in('engagement_id', engagementIds)
+    : { data: [] }
+  const creatorIds = [...new Set((engs ?? []).map(e => e.created_by).filter(Boolean) as string[])]
+  const { data: creators } = creatorIds.length > 0
+    ? await admin.from('profiles').select('user_id, full_name, email').in('user_id', creatorIds)
+    : { data: [] }
+  const creatorById = new Map((creators ?? []).map(c => [c.user_id as string, c]))
+  const senderByEngagement = new Map((engs ?? []).map(e => {
+    const c = creatorById.get(e.created_by as string)
+    return [e.engagement_id as string, c ? { name: c.full_name as string | null, email: c.email as string | null } : null]
+  }))
+
   const sent: Array<Record<string, unknown>> = []
   const skipped: Array<Record<string, unknown>> = []
 
@@ -125,7 +141,10 @@ export async function POST(req: NextRequest) {
     let emailDelivered = false
     if (toEmail) {
       try {
-        const transport = await sendEmail({ to: toEmail, subject, html })
+        const transport = await sendEmail({
+          to: toEmail, subject, html,
+          sender: senderByEngagement.get(row.engagement_id),
+        })
         emailDelivered = transport !== 'console'
       } catch (err) {
         console.error('[feedback-cron] email send failed', row.trainer_id, err)

@@ -241,7 +241,10 @@ export async function POST(req: NextRequest) {
         if (result.email_sent_to) {
           try {
             // console fallback = nothing actually delivered
-            result.email_delivered = (await sendEmail({ to: result.email_sent_to, subject, html })) !== 'console'
+            result.email_delivered = (await sendEmail({
+              to: result.email_sent_to, subject, html,
+              sender: { name: profile?.full_name, email: user.email },
+            })) !== 'console'
           } catch (e) {
             console.error('[reschedule] email error', trainer.trainer_id, e)
           }
