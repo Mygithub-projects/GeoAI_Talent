@@ -15,7 +15,7 @@ import { llm } from '@/lib/llm'
 // (migration 023 not run) or a query fails, Lexi still answers — she
 // just falls back to single-session behaviour.
 
-export const RECENT_WINDOW = 12   // turns replayed verbatim per request
+export const RECENT_WINDOW = 8    // turns replayed verbatim per request (was 12; trimmed 2026-10-08 to fit Groq's free 8k tokens/min)
 const CONDENSE_MIN         = 10   // condense once ≥ this many older turns are unsummarized
 const FETCH_CAP            = 80   // safety cap when loading unsummarized turns
 

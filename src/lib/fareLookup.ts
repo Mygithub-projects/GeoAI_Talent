@@ -1,6 +1,6 @@
 // LLM-based round-trip fare estimation for Boat / Flight modes in Sarawak.
-// Uses the llm() wrapper (Groq by default; set LLM_MODEL=compound-beta for
-// web-augmented estimates). Results cached in-memory per route key.
+// Uses the llm() wrapper (Groq by default; not web-augmented). Results
+// cached in-memory per route key.
 // cost_source is always 'llm'; admin can override via travel_logs UI (Phase 8).
 
 import { llm } from './llm'

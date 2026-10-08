@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient }      from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { llmChat, type ChatMessage } from '@/lib/llm'
+import { llmChat, LLMBusyError, type ChatMessage } from '@/lib/llm'
+import type { GeminiSource } from '@/lib/gemini'
 import { TOOL_DEFINITIONS, executeTool, type ToolContext } from '@/lib/assistantTools'
 import { loadMemoryContext, saveTurn } from '@/lib/assistantMemory'
 
@@ -32,7 +33,7 @@ const FOLLOW_UPS: Record<string, string[]> = {
   get_trainer_history:   ['chipAvailability', 'chipOpenEngagements'],
   check_availability:    ['chipHistory', 'chipOpenCalendar'],
   navigate:              ['chipFindTrainers', 'chipHowCost'],
-  web_search:            ['chipHowCost', 'chipFindTrainers'],
+  general_knowledge:     ['chipHowCost', 'chipFindTrainers'],
   none:                  ['chipFindTrainers', 'chipAvailability', 'chipHowCost'],
 }
 
@@ -68,8 +69,9 @@ function systemPrompt(
     `from a tool result in this conversation — not from MEMORY, which may be stale. Re-run the tool ` +
     `if a figure is needed again. If a tool returns nothing, say so.\n` +
     `3. For questions about how THIS system works, call search_knowledge_base first.\n` +
-    `4. For general questions unrelated to this system's data (pedagogy, activity ideas, facts), ` +
-    `use web_search — its answers are labelled as general knowledge for the user.\n` +
+    `4. For general questions unrelated to this system's data (pedagogy, activity ideas, education ` +
+    `news, facts), use general_knowledge — an EXTERNAL service, so send only the general question, ` +
+    `never names, contact details or anything from the tools. Its answers are labelled for the user.\n` +
     `5. You cannot send emails, edit data, approve users, or change settings — if asked, explain the ` +
     `screen where the user can do it themselves and offer to navigate there.\n` +
     `6. Keep replies short and practical: 1-4 sentences, or a compact list. No markdown headers.\n` +
@@ -136,6 +138,7 @@ export async function POST(req: NextRequest) {
 
   const actions: { type: 'navigate'; path: string }[] = []
   let generalKnowledge = false
+  let sources: GeminiSource[] = []
   let lastTool = 'none'
 
   const respond = async (reply: string) => {
@@ -144,6 +147,7 @@ export async function POST(req: NextRequest) {
       reply,
       actions,
       generalKnowledge,
+      sources,
       suggestionKeys: FOLLOW_UPS[lastTool] ?? FOLLOW_UPS.none,
     })
   }
@@ -158,6 +162,7 @@ export async function POST(req: NextRequest) {
 
       messages.push({ role: 'assistant', content: res.content, tool_calls: res.tool_calls })
 
+      let directReply: string | undefined
       for (const call of res.tool_calls) {
         let args: Record<string, unknown> = {}
         try { args = JSON.parse(call.function.arguments || '{}') } catch { /* tolerate bad JSON */ }
@@ -166,8 +171,15 @@ export async function POST(req: NextRequest) {
         lastTool = call.function.name
         if (outcome.action) actions.push(outcome.action)
         if (outcome.generalKnowledge) generalKnowledge = true
+        if (outcome.sources?.length) sources = outcome.sources
+        if (outcome.directReply) directReply = outcome.directReply
 
         messages.push({ role: 'tool', tool_call_id: call.id, content: outcome.result })
+      }
+
+      // A lone general-knowledge answer is already final — skip the rephrasing round.
+      if (directReply && res.tool_calls.length === 1) {
+        return await respond(directReply)
       }
     }
 
@@ -175,6 +187,11 @@ export async function POST(req: NextRequest) {
     const final = await llmChat(messages, [])
     return await respond(final.content ?? '')
   } catch (err) {
+    if (err instanceof LLMBusyError) {
+      // Free-tier quota is full for the moment — the drawer shows "busy, try again".
+      console.warn('[assistant] rate-limited:', err.message)
+      return NextResponse.json({ error: 'assistant_busy' }, { status: 503 })
+    }
     console.error('[assistant]', err)
     return NextResponse.json({ error: 'assistant_unavailable' }, { status: 502 })
   }

@@ -25,6 +25,9 @@ export interface Translations {
     thinking: string
     generalKnowledgeLabel: string
     errorMessage: string
+    busyMessage: string
+    generalNotice: string
+    sourcesLabel: string
     clearChat: string
     suggestionsLabel: string
     chipFindTrainers: string
@@ -789,6 +792,9 @@ export const en: Translations = {
     thinking: 'Lexi is thinking…',
     generalKnowledgeLabel: 'General knowledge — not from system data',
     errorMessage: 'Sorry, I couldn\'t process that right now. Please try again.',
+    busyMessage: 'Lexi is busy right now — please try again in a minute.',
+    generalNotice: 'General questions are answered by Google Gemini — please don\'t include personal details.',
+    sourcesLabel: 'Sources',
     clearChat: 'Clear conversation',
     suggestionsLabel: 'Suggestions',
     chipFindTrainers: 'How many trainers know Scratch in Kuching?',

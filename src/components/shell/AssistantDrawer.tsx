@@ -14,6 +14,7 @@ interface ChatBubble {
   role: 'user' | 'assistant'
   content: string
   generalKnowledge?: boolean
+  sources?: { title: string; url: string }[]
 }
 
 type ChipKey = keyof Pick<
@@ -125,11 +126,17 @@ export function AssistantDrawer({ open, onClose }: AssistantDrawerProps) {
         body: JSON.stringify({ locale, message: trimmed }),
       })
 
+      if (res.status === 503) {
+        // Free-tier AI quota is momentarily full — not an error the user caused
+        setMessages(prev => [...prev, { role: 'assistant', content: t.lexi.busyMessage }])
+        return
+      }
       if (!res.ok) throw new Error(`assistant ${res.status}`)
       const data = await res.json() as {
         reply: string
         actions?: { type: 'navigate'; path: string }[]
         generalKnowledge?: boolean
+        sources?: { title: string; url: string }[]
         suggestionKeys?: string[]
       }
 
@@ -137,6 +144,7 @@ export function AssistantDrawer({ open, onClose }: AssistantDrawerProps) {
         role: 'assistant',
         content: data.reply || '…',
         generalKnowledge: data.generalKnowledge,
+        sources: (data.sources ?? []).filter(s => /^https:\/\//.test(s.url)),
       }])
 
       const keys = (data.suggestionKeys ?? []).filter((k): k is ChipKey =>
@@ -156,7 +164,7 @@ export function AssistantDrawer({ open, onClose }: AssistantDrawerProps) {
       setLoading(false)
       inputRef.current?.focus()
     }
-  }, [messages, loading, locale, router, t.lexi.errorMessage])
+  }, [messages, loading, locale, router, t.lexi.errorMessage, t.lexi.busyMessage])
 
   const fillFromChip = useCallback((key: ChipKey) => {
     const text = t.lexi[key]
@@ -260,6 +268,22 @@ export function AssistantDrawer({ open, onClose }: AssistantDrawerProps) {
                         {m.content}
                       </div>
                       {m.generalKnowledge && <GlobeBadge label={t.lexi.generalKnowledgeLabel} />}
+                      {m.sources && m.sources.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
+                          <span>{t.lexi.sourcesLabel}:</span>
+                          {m.sources.map(s => (
+                            <a
+                              key={s.url}
+                              href={s.url}
+                              target="_blank"
+                              rel="noopener noreferrer nofollow"
+                              className="max-w-[12rem] truncate text-royal-blue underline-offset-2 hover:underline"
+                            >
+                              {s.title}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -291,10 +315,15 @@ export function AssistantDrawer({ open, onClose }: AssistantDrawerProps) {
             </div>
           )}
 
+          {/* Privacy notice — general questions leave the system (to Gemini) */}
+          <p className="flex-shrink-0 border-t border-border px-4 pt-2 text-[10.5px] leading-snug text-muted">
+            {t.lexi.generalNotice}
+          </p>
+
           {/* Input */}
           <form
             onSubmit={e => { e.preventDefault(); void send(input) }}
-            className="flex flex-shrink-0 items-center gap-2 border-t border-border p-3"
+            className="flex flex-shrink-0 items-center gap-2 p-3 pt-2"
           >
             <input
               ref={inputRef}

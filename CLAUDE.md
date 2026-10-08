@@ -30,18 +30,37 @@ purpose (renaming the cookie would reset every user's saved language preference)
   each carry a tooltip + popup subtree and mounting them all froze the zoom threshold crossing.
 - LLM: OpenAI-compatible client, **Groq now** (`GROQ_API_KEY`, base `https://api.groq.com/openai/v1`,
   a tool-use model), swappable to Claude/OpenAI via `LLM_PROVIDER`/`LLM_BASE_URL`/`LLM_MODEL`. All LLM
-  calls go behind `src/lib/llm.ts`: `llm()` (plain), `llmChat()` (tool use — Lexi orchestrator),
-  `llmWebSearch()` (compound model). Handle 429s with backoff (3-key rotation built in). **Groq gotcha:**
-  llama models stochastically 400 with `tool_use_failed` on tool calls — `recoverToolCall()` in llm.ts
-  parses the intended call out of the error's `failed_generation`; do not remove it. **Groq also
-  DECOMMISSIONS models:** `llama3-8b-8192` died → `LLM_MODEL_FAST=llama-3.1-8b-instant` (2026-07-13),
-  `compound-beta` → `groq/compound-mini` earlier. An LLM route suddenly failing with
-  `model_decommissioned` means update the env model id (.env.local + .env.example), not the code.
+  calls go behind `src/lib/llm.ts`: `llm()` (plain), `llmChat()` (tool use — Lexi orchestrator).
+  Key handling: a 401/403 key is SKIPPED; 429 honours Retry-After up to 8 s, then throws
+  `LLMBusyError` → `/api/assistant` returns 503 `assistant_busy` → drawer shows "Lexi is busy".
+  **All 3 GROQ keys are in ONE Groq org and share ONE free quota (8k tokens/min, 1k requests/day)** —
+  rotation adds no capacity; it only survives a bad key. gpt-oss gets `reasoning_effort: low`
+  (hidden reasoning counts against max_tokens AND the quota). Token counts (never content) are
+  logged as `[llm] usage …`. **Groq gotcha:**
+  models (seen with llama) stochastically 400 with `tool_use_failed` on tool calls — `recoverToolCall()`
+  in llm.ts parses the intended call out of the error's `failed_generation`; do not remove it. **Groq
+  also RETIRES models:** `llama3-8b-8192` died 2026-07-13; then **by 2026-10-08 ALL the llama models
+  and `groq/compound*` were gone** (Lexi 502'd) → now `LLM_MODEL=openai/gpt-oss-120b`,
+  `LLM_MODEL_FAST=openai/gpt-oss-20b`. An LLM route suddenly failing with `model_not_found` /
+  `model_decommissioned` means update the env model id (.env.local, .env.example, .env.docker.example
+  AND the server's `/opt/geoai_talent/.env.docker`, which needs the container RECREATED — `docker
+  restart` does not re-read `--env-file`), not the code.
 - Embeddings: Groq has none → Lexi's KB retrieval is fetch-and-rank in `src/lib/knowledgeBase.ts`
   (small interface — swap for FTS/pgvector later). KB rows live in `knowledge_base` (bilingual,
   seeded by migration 022, editable via `/admin/database`).
-- Web search: Groq compound model — **`compound-beta` is retired**; use `groq/compound-mini`
-  (env `LLM_SEARCH_MODEL`) for Lexi's general answers, or Tavily/SerpApi for fares.
+- **Lexi general knowledge = Gemini, split by sensitivity (2026-10-08, user decision).** Groq answers
+  everything about THIS system's data from the DB tools; only GENERAL questions go to Gemini
+  (`src/lib/gemini.ts`, `GEMINI_API_KEY` on Google's FREE tier — which may use prompts to improve
+  Google's products — with Google Search grounding, default `gemini-2.5-flash`, env `GEMINI_MODEL`).
+  The `general_knowledge` tool in assistantTools.ts is the ONLY path out, and it enforces: no chat
+  history/memory/user name/tool data is ever sent; questions matching system topics (trainer,
+  jurulatih, workshop, bengkel, invitation, cost, availability, TR codes…) are BLOCKED and sent back
+  to the DB tools; emails/MyKad/phones/TR codes/long numbers are scrubbed; daily caps
+  `LEXI_GENERAL_DAILY_CAP=50` app-wide and `LEXI_GENERAL_USER_DAILY_CAP=10` per user (Sarawak day),
+  counted from `audit_logs` action `assistant.general_knowledge` (content never stored — no extra
+  table). **Never make Gemini a fallback for data questions when Groq is busy** — that would send
+  trainer data to a free tier. Groq's own web search (`groq/compound*`, gpt-oss `browser_search`)
+  was dropped: one search is ~8k tokens, i.e. the whole free per-minute quota. Fares: Tavily/SerpApi.
 - Email: `src/lib/email.ts` dispatches Resend (`RESEND_API_KEY`/`EMAIL_API_KEY`) → Nodemailer SMTP
   (requires `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` all set) → console-log dev fallback (which also
   prints the accept/decline links so flows are testable without a provider). **Current transport
@@ -159,11 +178,11 @@ purpose (renaming the cookie would reset every user's saved language preference)
   login proxy) — never move it client-side.
 - **Lexi assistant** (Phase 7, live): `POST /api/assistant` orchestrator + 6 deterministic tools in
   `src/lib/assistantTools.ts` (KB search, find trainers, trainer history, availability, navigate,
-  web search). The LLM only parses intent and phrases replies — every count/cost/date comes from a
+  general_knowledge → Gemini). The LLM only parses intent and phrases replies — every count/cost/date comes from a
   tool; Lexi has NO mutating tools and must never gain one that sends email, edits data, approves
   users, or changes settings (those stay behind the human-approval screens; offer navigation instead).
   General/web-search answers MUST keep the `generalKnowledge` flag → amber "general knowledge" label
-  in the drawer; never route system-data questions through web_search. Trainer history costs are
+  in the drawer; never route system-data questions through general_knowledge (Gemini). Trainer history costs are
   queried as the CALLER (RLS-scoped); admin screens are role-gated in the navigate tool. Prompt
   chips + all assistant copy live in the `lexi` i18n namespace (en+bm).
   **Conversation memory (2026-07-10):** history is server-authoritative — `POST /api/assistant`

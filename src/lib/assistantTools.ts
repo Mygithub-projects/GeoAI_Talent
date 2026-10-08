@@ -5,7 +5,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ToolDefinition } from './llm'
-import { llmWebSearch } from './llm'
+import { geminiConfigured, geminiGeneralAnswer, type GeminiSource } from './gemini'
 import { searchKnowledgeBase } from './knowledgeBase'
 
 export interface ToolContext {
@@ -20,6 +20,8 @@ export interface ToolOutcome {
   result: string                                    // JSON string handed back to the model
   action?: { type: 'navigate'; path: string }       // side-channel for the client UI
   generalKnowledge?: boolean                        // reply must carry the "general knowledge" label
+  sources?: GeminiSource[]                          // web sources behind a general-knowledge answer
+  directReply?: string                              // final user-facing answer — skip the rephrasing LLM round
 }
 
 // Screens Lexi may navigate to. Admin screens are role-gated at execution.
@@ -116,14 +118,18 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     type: 'function',
     function: {
-      name: 'web_search',
+      name: 'general_knowledge',
       description:
         'Answer a GENERAL question that is NOT about this system\'s data — e.g. pedagogy concepts, ' +
-        'training activity ideas, general facts — using the LLM\'s knowledge plus live web search. ' +
-        'NEVER use this for trainer counts, costs, schedules, or anything the other tools can answer.',
+        'training activity ideas, education news, general facts. It is answered by an EXTERNAL ' +
+        'service with web search. NEVER use it for trainers, workshops, invitations, costs, ' +
+        'schedules, or anything the other tools can answer, and NEVER put names, emails, phone ' +
+        'numbers or other personal details in the question.',
       parameters: {
         type: 'object',
-        properties: { question: { type: 'string', description: 'The user\'s question, self-contained' } },
+        properties: {
+          question: { type: 'string', description: 'The general question, self-contained, with no personal details' },
+        },
         required: ['question'],
       },
     },
@@ -131,6 +137,62 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
 ]
 
 // ── Helpers ─────────────────────────────────────────────────────
+
+// ── General-knowledge guard (the server-side safety net) ──
+// The model is told never to send system or personal data to the external
+// service; these checks enforce it regardless of what the model chose.
+
+// Questions about this system's data stay on the DB tools — never external.
+export const SYSTEM_TOPIC = new RegExp(
+  '\\b(' + [
+    'trainers?', 'jurulatih', 'master trainers?', 'workshops?', 'bengkel', 'invitations?', 'jemputan',
+    'engagements?', 'penglibatan', 'availability', 'kekosongan', 'lapang', 'travel costs?',
+    'kos perjalanan', 'claims?', 'tuntutan', 'TR\\d{3,5}',
+  ].join('|') + ')\\b',
+  'i',
+)
+
+// Strip personal identifiers before anything leaves the system.
+export function scrubPersonalData(text: string): string {
+  return text
+    .replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, '[email removed]')
+    .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[IC removed]')                       // MyKad
+    .replace(/(?:\+?6?0)[\s-]?1\d[\s-]?\d{3,4}[\s-]?\d{3,4}\b/g, '[phone removed]') // MY mobile
+    .replace(/\b0\d{1,2}[\s-]?\d{3,4}[\s-]?\d{3,4}\b/g, '[phone removed]')         // MY landline
+    .replace(/\bTR\d{3,5}\b/gi, '[code removed]')
+    .replace(/\b\d{8,}\b/g, '[number removed]')
+    .trim()
+    .slice(0, 500)
+}
+
+const GENERAL_DAILY_CAP      = parseInt(process.env.LEXI_GENERAL_DAILY_CAP ?? '50', 10)
+const GENERAL_USER_DAILY_CAP = parseInt(process.env.LEXI_GENERAL_USER_DAILY_CAP ?? '10', 10)
+const GENERAL_AUDIT_ACTION   = 'assistant.general_knowledge'
+
+// Start of "today" in Sarawak (UTC+8, no DST) as an ISO timestamp.
+function sarawakDayStartIso(): string {
+  const OFFSET = 8 * 3600_000
+  const local  = Date.now() + OFFSET
+  return new Date(local - (local % 86_400_000) - OFFSET).toISOString()
+}
+
+// Daily caps protect the free Gemini key. Counted from audit_logs (which
+// records THAT a general question was asked, never its content), so no
+// extra table is needed and admins get an audit trail for free.
+async function generalQuotaExceeded(ctx: ToolContext): Promise<'app' | 'user' | null> {
+  const since = sarawakDayStartIso()
+  const base = () => ctx.admin.from('audit_logs')
+    .select('log_id', { count: 'exact', head: true })
+    .eq('action', GENERAL_AUDIT_ACTION)
+    .gte('created_at', since)
+  const [{ count: appCount }, { count: userCount }] = await Promise.all([
+    base(),
+    base().eq('actor', ctx.userId),
+  ])
+  if ((userCount ?? 0) >= GENERAL_USER_DAILY_CAP) return 'user'
+  if ((appCount ?? 0)  >= GENERAL_DAILY_CAP)      return 'app'
+  return null
+}
 
 async function resolveTrainer(admin: SupabaseClient, name: string) {
   const { data } = await admin
@@ -153,7 +215,7 @@ export async function executeTool(
     case 'search_knowledge_base': {
       const hits = await searchKnowledgeBase(ctx.admin, String(args.query ?? ''), ctx.locale)
       if (hits.length === 0) {
-        return { result: JSON.stringify({ found: false, note: 'No knowledge base entry matches. If this is a general (non-system) question, use web_search; otherwise say you do not have that documented.' }) }
+        return { result: JSON.stringify({ found: false, note: 'No knowledge base entry matches. If this is a general (non-system) question, use general_knowledge; otherwise say you do not have that documented.' }) }
       }
       return { result: JSON.stringify({ found: true, entries: hits.map(h => ({ title: h.title, content: h.content })) }) }
     }
@@ -335,18 +397,52 @@ export async function executeTool(
       }
     }
 
-    case 'web_search': {
+    case 'general_knowledge': {
+      const raw = String(args.question ?? '').trim()
+      if (!raw) return { result: JSON.stringify({ ok: false, note: 'No question given.' }) }
+
+      // Safety net 1: anything about this system's data never leaves the system.
+      if (SYSTEM_TOPIC.test(raw)) {
+        return { result: JSON.stringify({ ok: false, blocked: 'system_topic', note: 'This question is about this system\'s data (trainers, workshops, invitations, costs or schedules), so it must NOT go to the external service. Answer it with the other tools instead, or say you do not have that data.' }) }
+      }
+      // Safety net 2: strip personal identifiers.
+      const question = scrubPersonalData(raw)
+
+      const unavailable = (why: string) => ({
+        result: JSON.stringify({ ok: false, note: `${why} Answer briefly from your own general knowledge if you reasonably can, and say it is not verified; otherwise say you cannot answer that right now.` }),
+        generalKnowledge: true,
+      })
+
+      if (!geminiConfigured()) return unavailable('The general-knowledge service is not configured.')
+
+      const exceeded = await generalQuotaExceeded(ctx)
+      if (exceeded === 'user') return unavailable(`The user has reached their daily limit of ${GENERAL_USER_DAILY_CAP} general questions; tell them it resets tomorrow.`)
+      if (exceeded === 'app')  return unavailable(`The app-wide daily limit of ${GENERAL_DAILY_CAP} general questions has been reached; tell them it resets tomorrow.`)
+
+      // Claim one unit of today's quota before calling out (no content stored).
+      await ctx.admin.from('audit_logs').insert({
+        actor:        ctx.userId,
+        action:       GENERAL_AUDIT_ACTION,
+        entity_type:  'assistant',
+        payload_json: { scrubbed: question !== raw, locale: ctx.locale },
+      })
+
       try {
-        const answer = await llmWebSearch(String(args.question ?? ''), ctx.locale)
+        const answer = await geminiGeneralAnswer(question, ctx.locale)
         return {
           result: JSON.stringify({
-            answer,
-            note: 'This is general knowledge from outside the system — repeat it faithfully; it will be labelled as general knowledge in the UI.',
+            answer: answer.text,
+            note: 'This is general knowledge from an external service with web search — relay it faithfully and concisely; the UI labels it as general knowledge and lists its sources, so do not paste URLs.',
           }),
           generalKnowledge: true,
+          sources: answer.sources,
+          // Gemini already answered in the user's language; returning it as-is
+          // saves a second Groq round (~1.5k tokens of the shared 8k/min quota).
+          directReply: answer.text,
         }
-      } catch {
-        return { result: JSON.stringify({ ok: false, note: 'Web search is unavailable right now. Answer from your own general knowledge, briefly, or say you cannot.' }), generalKnowledge: true }
+      } catch (err) {
+        console.error('[general_knowledge]', (err as Error).message)
+        return unavailable('The general-knowledge service is unavailable right now.')
       }
     }
 
