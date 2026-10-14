@@ -698,7 +698,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
             {t.common.appName}{isAdmin ? ` · ${t.common.adminBadge}` : ''}
           </p>
           <h1 style={{ color: '#ffffff', fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '0.3px' }}>
-            {scope === 'mine' ? t.backlog.myEngagements : t.backlog.allActivity}
+            {t.map.navEngagements}
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, margin: '4px 0 0' }}>
             {t.backlog.subtitle}

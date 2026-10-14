@@ -172,7 +172,7 @@ export const bm: Translations = {
     modeB: 'Tempat',
     navDashboard: 'Papan Pemuka',
     navSearch: 'Carian',
-    navEngagements: 'Penglibatan',
+    navEngagements: 'Penglibatan Pengguna',
     navAdmin: 'Pentadbiran',
     navDatabase: 'Pangkalan Data',
     navAnalytics: 'Analitik',

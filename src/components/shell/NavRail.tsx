@@ -125,7 +125,6 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
 
   const navItems = [
     { href: '/dashboard',   label: t.map.navDashboard,    icon: <MapIcon />,      adminOnly: false, badge: 0 },
-    { href: '/engagements', label: t.map.navEngagements,  icon: <CalendarIcon />, adminOnly: false, badge: 0 },
     { href: '/calendar',    label: t.map.navCalendar,     icon: <CalendarGridIcon />, adminOnly: false, badge: 0 },
     { href: '/reports',     label: t.map.navReports,      icon: <DocumentReportIcon />, adminOnly: false, badge: 0 },
     { href: '/talent',      label: t.map.navTalent,       icon: <UsersMapIcon />,       adminOnly: false, badge: 0 },
@@ -133,6 +132,7 @@ export function NavRail({ expanded, onToggle, userRole, pendingCount = 0 }: NavR
     { href: '/admin/database',  label: t.map.navDatabase,  icon: <DatabaseIcon />,      adminOnly: true, badge: 0 },
     { href: '/analytics', label: t.map.navAnalytics, icon: <ChartIcon />,         adminOnly: false, badge: 0 },
     { href: '/admin/audit',     label: t.map.navAudit,     icon: <ClipboardListIcon />, adminOnly: true, badge: 0 },
+    { href: '/engagements', label: t.map.navEngagements,  icon: <CalendarIcon />, adminOnly: false, badge: 0 },
   ]
 
   return (

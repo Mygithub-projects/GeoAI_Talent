@@ -946,7 +946,7 @@ export const en: Translations = {
     modeB: 'Venue',
     navDashboard: 'Dashboard',
     navSearch: 'Search',
-    navEngagements: 'Engagements',
+    navEngagements: 'User Engagement',
     navAdmin: 'Admin',
     navDatabase: 'Database',
     navAnalytics: 'Analytics',
