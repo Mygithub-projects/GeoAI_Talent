@@ -123,6 +123,18 @@ export const ADMIN_TABLES: Record<string, AdminTableDef> = {
       { name: 'effective_from', labelEn: 'Effective from', labelBm: 'Berkuat kuasa',   type: 'date',   required: false },
     ],
   },
+  // Migration 030 — app-wide numeric settings (e.g. the trainer engagement
+  // limit). The DB CHECK keeps trainer_max_engagements_per_year in 1–366.
+  app_settings: {
+    name: 'app_settings', labelEn: 'App Settings', labelBm: 'Tetapan Aplikasi',
+    primaryKey: 'setting_key', pkAuto: false,
+    searchColumn: 'setting_key', orderBy: 'setting_key',
+    columns: [
+      { name: 'setting_key', labelEn: 'Setting key', labelBm: 'Kunci tetapan', type: 'text',    required: true  },
+      { name: 'value_int',   labelEn: 'Value',       labelBm: 'Nilai',         type: 'integer', required: true  },
+      { name: 'note',        labelEn: 'Note',        labelBm: 'Nota',          type: 'text',    required: false },
+    ],
+  },
   knowledge_base: {
     name: 'knowledge_base', labelEn: 'Knowledge Base', labelBm: 'Pangkalan Pengetahuan',
     primaryKey: 'doc_id', pkAuto: true,

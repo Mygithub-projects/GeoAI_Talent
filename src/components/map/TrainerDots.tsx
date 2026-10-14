@@ -5,6 +5,7 @@ import { Marker, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { localizeSkillName } from './SkillCheckboxFilter'
+import type { EngagementCount } from '@/lib/engagementLimit'
 
 export interface TravelOption {
   mode:         'Road' | 'Boat' | 'Flight'
@@ -34,6 +35,8 @@ export interface TrainerPoint {
   cost_source?:    string
   cost_note?:      string
   travel_options?: TravelOption[]
+  // Migration 030 — confirmed/pending this workshop's year vs the limit
+  engagement?:     EngagementCount | null
 }
 
 // Cache icons by key string

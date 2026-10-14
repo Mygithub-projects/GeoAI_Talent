@@ -769,6 +769,26 @@ export interface Translations {
     daysAgoSuffix: string
     footerNote: string
   }
+  // Trainer engagement limit (migration 030)
+  engagementLimit: {
+    badge: string
+    badgeNear: string
+    badgeReached: string
+    reachedNote: string
+    pendingSuffix: string
+    title: string
+    prevYear: string
+    nextYear: string
+    showHistory: string
+    none: string
+    loading: string
+    unavailable: string
+    statusConfirmed: string
+    statusPending: string
+    untitled: string
+    footnote: string
+    reviewWarning: string
+  }
 }
 
 export const en: Translations = {
@@ -1560,5 +1580,24 @@ export const en: Translations = {
     hoursAgoSuffix: 'h ago',
     daysAgoSuffix: 'd ago',
     footerNote: 'Showing up to 200 workshops and 100 audit log entries · Sorted newest first',
+  },
+  engagementLimit: {
+    badge: '{n}/{limit} in {year}',
+    badgeNear: 'Near limit: {n}/{limit}',
+    badgeReached: 'Limit reached: {n}/{limit}',
+    reachedNote: 'This trainer has reached the yearly limit. You can still invite them — please check this is intended.',
+    pendingSuffix: '+{n} pending',
+    title: 'Engagements in {year}',
+    prevYear: 'Previous year',
+    nextYear: 'Next year',
+    showHistory: 'Show engagement history',
+    none: 'No workshops recorded this year.',
+    loading: 'Loading engagements…',
+    unavailable: 'Engagement history is unavailable right now.',
+    statusConfirmed: 'Confirmed',
+    statusPending: 'Pending',
+    untitled: '(untitled workshop)',
+    footnote: 'Based on workshops recorded in GeoAI Talent Agent only. Engagements arranged outside the system are not included.',
+    reviewWarning: 'At or over the yearly engagement limit:',
   },
 }

@@ -144,10 +144,22 @@ purpose (renaming the cookie would reset every user's saved language preference)
   `engagement_rescheduled` notification when an admin rescheduled someone else's workshop. Never
   change dates on an invited engagement without this flow. Hard deletion
   (`POST /api/engagements/delete`) is Draft-only; anything invited must use Cancel (soft, audited).
-- **Admin Database Console** (`/admin/database`): direct CRUD over the 7 reference tables only, driven
+- **Admin Database Console** (`/admin/database`): direct CRUD over the 8 reference tables only (incl.
+  `app_settings`, migration 030), driven
   by the allowlist registry in `src/lib/adminTables.ts` — never add transactional tables
   (engagements/tokens/audit/profiles) or `admin_allowlist` to it. Every request is validated against
   the registry; every mutation is audit-logged.
+- **Trainer engagement limit** (migration 030, 2026-10-14): a trainer may be engaged at most N times
+  per CALENDAR year (N = `app_settings.trainer_max_engagements_per_year`, default 21, DB-checked 1–366
+  — never hardcode it). Counts = distinct workshops with the trainer **Confirmed**, workshop not
+  Cancelled, by `start_date` year; Pending Invite is shown separately; the workshop being staffed is
+  excluded. It is a **SOFT warning only — never block selection or sending**. Badge levels: amber at
+  N-2, red at N (`src/lib/engagementLimit.ts`). Shown on recommendation cards (click → history), the
+  email-review screen before Send, and the `/talent` selected-trainer card; invite audit rows carry
+  `confirmed_that_year`/`over_limit`. History shows ALL coordinators' workshop titles to every active
+  user (user decision — overall load must be visible), unlike `/calendar`/`/reports` scoping. Every
+  count/history display carries the footnote that engagements outside the system aren't included.
+  Readers are best-effort: if the counts can't be read the badge is simply absent.
 - **Workshop Calendar** (`/calendar`): scoped like `/engagements` and `/reports` (user decision
   2026-07-12, REPLACING the original visible-to-all rule) — admins see every workshop, non-admins
   only workshops they created. The scoping lives in `GET /api/calendar` (reads go through the

@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { mergeTemplate } from '@/lib/emailTemplate'
 import { buildInvitationEmail } from '@/lib/emailContent'
+import { limitLevel, type EngagementCount } from '@/lib/engagementLimit'
 
 export interface SelectedTrainer {
   trainer_id:   string
   trainer_name: string
+  // Migration 030 — for the soft over-limit warning before Send
+  engagement?:  EngagementCount | null
 }
 
 export interface SentResult {
@@ -88,6 +91,7 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
   if (!open) return null
 
   const previewTrainerName = selectedTrainers.find(t => t.trainer_id === previewId)?.trainer_name ?? ''
+  const overLimit = selectedTrainers.filter(st => st.engagement && limitLevel(st.engagement) === 'reached')
   const mergedPreview = expiresAt
     ? buildInvitationEmail({
         lang:          emailLang,
@@ -234,6 +238,17 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
                   </div>
 
                   {error && <p style={{ fontSize: 11, color: '#B91C1C', marginBottom: 10 }}>{error}</p>}
+
+                  {/* Soft engagement-limit warning — informs, never blocks Send */}
+                  {overLimit.length > 0 && (
+                    <div style={{ fontSize: 11, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #F87171', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
+                      <p style={{ margin: 0, fontWeight: 700 }}>⚠ {t.engagementLimit.reviewWarning}</p>
+                      <p style={{ margin: '2px 0 0' }}>
+                        {overLimit.map(st => `${st.trainer_name} (${st.engagement!.confirmed}/${st.engagement!.limit})`).join(', ')}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: 10, color: '#7F1D1D', fontStyle: 'italic' }}>{t.engagementLimit.footnote}</p>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <button

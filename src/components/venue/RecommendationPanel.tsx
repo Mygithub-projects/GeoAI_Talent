@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import type { TrainerPoint, TravelOption } from '@/components/map/TrainerDots'
 import { useLanguage } from '@/i18n/LanguageProvider'
+import { EngagementBadge, EngagementHistoryInline } from '@/components/trainer/EngagementLimit'
+import { limitLevel } from '@/lib/engagementLimit'
 
 export interface InvitedTrainerStatus {
   trainer_id:   string
@@ -71,6 +74,8 @@ export function RecommendationPanel({
   invitedTrainers, onRefreshStatus, isRefreshingStatus,
 }: RecommendationPanelProps) {
   const { t } = useLanguage()
+  // Trainer whose engagement history is expanded under their card
+  const [historyFor, setHistoryFor] = useState<string | null>(null)
 
   if (candidates.length === 0 && invitedTrainers.length === 0) return null
 
@@ -170,6 +175,25 @@ export function RecommendationPanel({
                 <p style={{ margin: '2px 0 0', fontSize: 9, color: '#64748B', lineHeight: 1.2 }}>
                   PPD {c.ppd_district}
                 </p>
+              )}
+
+              {/* Engagement limit (soft warning — selection is never blocked) */}
+              {c.engagement && (
+                <div style={{ marginTop: 4 }}>
+                  <EngagementBadge
+                    count={c.engagement}
+                    expanded={historyFor === c.trainer_id}
+                    onClick={() => setHistoryFor(h => (h === c.trainer_id ? null : c.trainer_id))}
+                  />
+                  {limitLevel(c.engagement) === 'reached' && (
+                    <p style={{ margin: '3px 0 0', fontSize: 9, color: '#B91C1C', lineHeight: 1.3 }}>
+                      {t.engagementLimit.reachedNote}
+                    </p>
+                  )}
+                  {historyFor === c.trainer_id && (
+                    <EngagementHistoryInline trainerId={c.trainer_id} year={c.engagement.year} />
+                  )}
+                </div>
               )}
 
               {/* Travel row */}

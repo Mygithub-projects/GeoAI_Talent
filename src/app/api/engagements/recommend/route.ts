@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRoute } from '@/lib/osrm'
 import { computeLandCost, chooseTransportMode, type TravelRates } from '@/lib/travelCost'
 import { estimateFare } from '@/lib/fareLookup'
+import { getEngagementCounts, yearOf } from '@/lib/engagementLimit'
 
 interface RecommendBody {
   engagement_id?:    string | null
@@ -241,7 +242,18 @@ export async function POST(req: NextRequest) {
 
   // ── 4. Sort: distance ASC, then cost ASC ─────────────────────────────────────────────────────
   enriched.sort((a, b) => a.distance_km - b.distance_km || a.cost_myr - b.cost_myr)
-  const candidates = enriched.map((c, i) => ({ ...c, rank: i + 1 }))
+
+  // Soft engagement-limit info for the workshop's calendar year (migration
+  // 030). Excludes this workshop; null → the panel shows no badge.
+  const workshopYear = yearOf(start_date)
+  const counts = workshopYear
+    ? await getEngagementCounts(supabase, enriched.map(c => c.trainer_id), workshopYear, engagementId)
+    : null
+  const candidates = enriched.map((c, i) => ({
+    ...c,
+    rank:       i + 1,
+    engagement: counts?.get(c.trainer_id) ?? null,
+  }))
 
   // ── 5. Create the workshop's Draft engagement on the FIRST round only; later rounds reuse it ──
   if (!engagementId) {

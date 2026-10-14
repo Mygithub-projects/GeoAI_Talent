@@ -7,6 +7,7 @@ import { buildInvitationEmail } from '@/lib/emailContent'
 import { mergeTemplate } from '@/lib/emailTemplate'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
 import { validateInviteDateRange } from '@/lib/dateValidation'
+import { getEngagementCounts, yearOf } from '@/lib/engagementLimit'
 
 const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
@@ -123,6 +124,20 @@ export async function POST(req: NextRequest) {
   const venueName = await resolveVenueName(admin, engagement)
   const trainingTitle = engagement.training_title ?? 'Program Latihan'
 
+  // Engagement-limit snapshot for the audit trail (soft rule — never
+  // blocks; null if migration 030 isn't applied). Counted BEFORE this
+  // invite, excluding this workshop.
+  const workshopYear = yearOf(engagement.start_date as string | null)
+  const limitCounts = workshopYear
+    ? await getEngagementCounts(supabase, toInvite, workshopYear, engagement_id)
+    : null
+  const limitAudit = (trainerId: string) => {
+    const c = limitCounts?.get(trainerId)
+    return c
+      ? { engagement_year: c.year, confirmed_that_year: c.confirmed, engagement_limit: c.limit, over_limit: c.confirmed >= c.limit }
+      : {}
+  }
+
   // ── 8. Per-trainer: insert row, tokens, send email, audit log ─
   const sent: SentResult[] = []
   await Promise.all(trainers.map(async (trainer) => {
@@ -214,6 +229,7 @@ export async function POST(req: NextRequest) {
         email_delivered:  emailDelivered,
         token_expires_at: expiresAt.toISOString(),
         actor_name:       profile?.full_name,
+        ...limitAudit(trainer.trainer_id as string),
       },
     })
 

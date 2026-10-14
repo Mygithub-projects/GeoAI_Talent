@@ -9,6 +9,7 @@ import type { DistrictStatPoint, DistrictCoverage } from '@/components/map/Distr
 import { SkillCheckboxFilter, localizeSkillName } from '@/components/map/SkillCheckboxFilter'
 import { CANONICAL_PPD_DISTRICTS, DESERT_THRESHOLD, canonicalizeDistrict } from '@/lib/districts'
 import { districtColor } from '@/lib/districtColors'
+import { EngagementHistoryPanel } from '@/components/trainer/EngagementLimit'
 import { TransferModal, type NewLocation } from './TransferModal'
 
 // Matches MapInner.DRILL_ZOOM (kept as a local constant, same as
@@ -384,6 +385,7 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
               {selectedTrainer.subjects.length > 0 && (
                 <p className="text-[11px] text-slate"><span className="font-bold">{tt.subjects}: </span>{selectedTrainer.subjects.map(localize).join(', ')}</p>
               )}
+              <EngagementHistoryPanel key={selectedTrainer.trainer_id} trainerId={selectedTrainer.trainer_id} />
               {isAdmin && (
                 dropMode === 'transfer' ? (
                   <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-2.5 py-1.5">

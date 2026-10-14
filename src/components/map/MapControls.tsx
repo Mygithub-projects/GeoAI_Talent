@@ -295,7 +295,7 @@ export function MapControls({
           engagementId={engagementId}
           selectedTrainers={recommendations
             .filter(c => selectedTrainerIds.has(c.trainer_id))
-            .map(c => ({ trainer_id: c.trainer_id, trainer_name: c.trainer_name }))}
+            .map(c => ({ trainer_id: c.trainer_id, trainer_name: c.trainer_name, engagement: c.engagement ?? null }))}
           onSent={onInviteSent}
         />
       )}
