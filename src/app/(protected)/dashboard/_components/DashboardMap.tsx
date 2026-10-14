@@ -10,6 +10,8 @@ import type { VenueOption } from '@/components/venue/VenueAutocomplete'
 import type { SentResult, SkippedResult } from '@/components/venue/EmailReviewModal'
 import type { InvitedTrainerStatus } from '@/components/venue/RecommendationPanel'
 import { useLanguage } from '@/i18n/LanguageProvider'
+import { districtColor } from '@/lib/districtColors'
+import { canonicalizeDistrict } from '@/lib/districts'
 
 const DRILL_ZOOM = 10
 
@@ -61,6 +63,9 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
   const [radiusKm, setRadiusKm]       = useState(50)
   const [dropPinMode, setDropPinMode] = useState(false)
   const [mapZoom, setMapZoom]         = useState(initialZoom)
+  // "My location" result: the exact centre array it set (so any later centre
+  // change ends it) + the reverse-geocoded place name once known
+  const [myLocation, setMyLocation]   = useState<{ centre: [number, number]; place: string | null } | null>(null)
   const [loading, setLoading]         = useState(true)
   const [geoError, setGeoError]       = useState<string | null>(null)
   const geoErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -398,7 +403,15 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
       const lat = pos.coords.latitude
       const lng = pos.coords.longitude
       setGeoError(null)
-      setCentre([lat, lng])
+      const here: [number, number] = [lat, lng]
+      setCentre(here)
+      setMyLocation({ centre: here, place: null })
+      fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
+        .then(r => r.json())
+        .then((d: { place?: string | null }) => {
+          setMyLocation(m => (m && m.centre === here ? { ...m, place: d.place ?? null } : m))
+        })
+        .catch(() => { /* label stays plain "You are here" */ })
       flyKeyRef.current += 1
       setFlyToTarget({ lat, lng, zoom: 12, key: flyKeyRef.current })
       if (appModeRef.current === 'B') {
@@ -463,9 +476,37 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
   // Pin label shows only the venue name — geocoded venues carry the full
   // comma-separated address, which is too long for the map tooltip. The
   // full address stays visible in the venue chip in the search panel.
-  const centreLabel = appMode === 'B'
-    ? (venueName ? venueName.split(',')[0].trim() : null)
-    : (selectedPPDName ? `PPD ${selectedPPDName}` : null)
+  const isMyLocation = myLocation !== null && centre === myLocation.centre
+  const centreLabel = isMyLocation
+    ? (myLocation.place ? `${t.map.youAreHere}: ${myLocation.place}` : t.map.youAreHere)
+    : appMode === 'B'
+      ? (venueName ? venueName.split(',')[0].trim() : null)
+      : (selectedPPDName ? `PPD ${selectedPPDName}` : null)
+
+  // A clicked PPD pin already marks the centre — don't stack the amber pin on it
+  const hideCentrePin = appMode === 'A' && !!selectedPPDName && !isMyLocation
+
+  // Mode A trainer pins take their PPD district's colour — the same fixed
+  // palette as /talent, so a district looks the same on both screens.
+  // Mode B ranked recommendation pins keep their own amber/teal colours.
+  const trainerPinColor = useCallback(
+    (p: TrainerPoint) => districtColor(p.ppd_district),
+    [],
+  )
+
+  // Colour key for the zoomed-in Mode A view: every district present in
+  // the shown pins, most trainers first.
+  const districtKey = useMemo(() => {
+    if (appMode !== 'A' || mapMode !== 'pins') return null
+    const counts = new Map<string, number>()
+    for (const p of pins) {
+      const d = canonicalizeDistrict(p.ppd_district)
+      if (d) counts.set(d, (counts.get(d) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([district, count]) => ({ district, count, color: districtColor(district) }))
+  }, [appMode, mapMode, pins])
 
   return (
     <div className="absolute inset-0">
@@ -487,6 +528,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
           onDropPin={handleDropPin}
           onDrillDown={handleDrillDown}
           onZoomChange={setMapZoom}
+          trainerPinColor={appMode === 'A' ? trainerPinColor : undefined}
+          hideCentrePin={hideCentrePin}
         />
       </div>
 
@@ -535,6 +578,7 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
           onOpenReview={handleOpenReview}
           onCloseReview={handleCloseReview}
           onInviteSent={handleInviteSent}
+          districtKey={districtKey}
         />
       </div>
     </div>

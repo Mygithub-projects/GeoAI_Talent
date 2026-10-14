@@ -28,6 +28,8 @@ interface MapCanvasProps {
   districtStatLabels?: DistrictStatLabels
   onTrainerSelect?:    (trainerId: string) => void
   trainerPinColor?:    (t: TrainerPoint) => string
+  // Dashboard: circle only, no amber centre pin (centre is a clicked PPD)
+  hideCentrePin?:      boolean
 }
 
 const MapInnerDynamic = dynamic(

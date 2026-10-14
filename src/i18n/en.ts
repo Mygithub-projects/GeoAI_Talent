@@ -173,6 +173,11 @@ export interface Translations {
     openAssistant: string
     closeAssistant: string
     assistantComingSoon: string
+    keyTitle: string
+    keyShow: string
+    keyHide: string
+    keyPpd: string
+    keyTrainerDistrict: string
     distributionView: string
     zoomOutOverview: string
     clickToExplore: string
@@ -185,6 +190,7 @@ export interface Translations {
     filterBySkill: string
     venueNotSet: string
     customLocation: string
+    youAreHere: string
     registryBadge: string
     geocodeBadge: string
     startDate: string
@@ -956,6 +962,11 @@ export const en: Translations = {
     openAssistant: 'Open assistant',
     closeAssistant: 'Close assistant',
     assistantComingSoon: 'Your AI assistant will be available in an upcoming phase.',
+    keyTitle: 'Map key',
+    keyShow: 'Show',
+    keyHide: 'Hide',
+    keyPpd: 'PPD',
+    keyTrainerDistrict: 'Trainers by district',
     distributionView: 'Distribution view',
     zoomOutOverview: 'Zoom out for overview',
     clickToExplore: 'Select a PPD district pin to explore trainers nearby',
@@ -968,6 +979,7 @@ export const en: Translations = {
     filterBySkill: 'Filter by skill / subject',
     venueNotSet: 'Search or drop a pin to set the venue',
     customLocation: 'Custom location',
+    youAreHere: 'You Are Here',
     registryBadge: 'R',
     geocodeBadge: 'G',
     startDate: 'Start date',

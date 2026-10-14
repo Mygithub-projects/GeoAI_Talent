@@ -54,6 +54,7 @@ interface MapInnerProps {
   districtStatLabels?: DistrictStatLabels
   onTrainerSelect?:    (trainerId: string) => void
   trainerPinColor?:    (t: TrainerPoint) => string
+  hideCentrePin?:      boolean
 }
 
 // Fits map to bounds when `key` changes — avoids re-firing on remount
@@ -105,12 +106,14 @@ export function MapInner({
   districtStatLabels,
   onTrainerSelect,
   trainerPinColor,
+  hideCentrePin = false,
 }: MapInnerProps) {
   // Mode B with no venue set yet: show the same statewide heatmap as Mode A
   // so the map isn't blank while the user is still choosing a venue.
   const showHeatmap = appMode === 'A' ? mode === 'heatmap' : !centre
   const showPins    = appMode === 'B' ? pins.length > 0 : mode === 'pins' && pins.length > 0
-  const showPPDs    = appMode === 'A' && mode === 'heatmap' && ppds.length > 0
+  // PPD office badges stay visible when zoomed in to trainer pins (2026-10-14)
+  const showPPDs    = appMode === 'A' && ppds.length > 0
   // Phase 8A: district coverage badges replace the plain PPD pins when provided
   const showStats   = appMode === 'A' && mode === 'heatmap' && (districtStats?.length ?? 0) > 0
 
@@ -134,7 +137,7 @@ export function MapInner({
 
       {/* Mode A heatmap with PPD district navigation pins */}
       {showHeatmap && heatPoints.length > 0 && <HeatLayer points={heatPoints} />}
-      {showPPDs && <PPDPins ppds={ppds} onSelect={onDrillDown} />}
+      {showPPDs && <PPDPins ppds={ppds} onSelect={onDrillDown} avoid={showPins ? pins : undefined} />}
       {showStats && districtStatLabels && (
         <DistrictStatPins stats={districtStats!} labels={districtStatLabels} onSelect={onDrillDown} />
       )}
@@ -143,8 +146,14 @@ export function MapInner({
       {showPins && <TrainerDots trainers={pins} onSelect={onTrainerSelect} pinColor={trainerPinColor} />}
 
       {/* Amber venue/centre pin + dashed radius circle */}
+      {/* hideCentrePin: a clicked PPD pin already marks the centre */}
       {centre && (
-        <RadiusCircle centre={centre} radiusKm={radiusKm} ppdName={ppdName} />
+        <RadiusCircle
+          centre={centre}
+          radiusKm={radiusKm}
+          ppdName={ppdName}
+          showPin={!hideCentrePin}
+        />
       )}
 
       {dropPinMode && <DropPinHandler onPin={onDropPin} />}

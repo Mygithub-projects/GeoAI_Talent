@@ -7,6 +7,8 @@ interface RadiusCircleProps {
   centre:   [number, number]
   radiusKm: number
   ppdName?: string | null
+  // false = circle only (the centre is already marked by a PPD pin)
+  showPin?: boolean
 }
 
 // Amber drop-pin — larger and distinct from teal trainer pins
@@ -28,10 +30,10 @@ const pinIcon = typeof window !== 'undefined'
     })
   : undefined
 
-export function RadiusCircle({ centre, radiusKm, ppdName }: RadiusCircleProps) {
+export function RadiusCircle({ centre, radiusKm, ppdName, showPin = true }: RadiusCircleProps) {
   return (
     <>
-      {pinIcon && (
+      {pinIcon && showPin && (
         <Marker position={centre} icon={pinIcon}>
           {ppdName && (
             <Tooltip direction="top" offset={[0, -52]} opacity={0.95}>

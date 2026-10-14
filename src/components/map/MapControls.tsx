@@ -7,6 +7,7 @@ import { EmailReviewModal, type SentResult, type SkippedResult } from '@/compone
 import { SkillCheckboxFilter } from '@/components/map/SkillCheckboxFilter'
 import type { VenueOption } from '@/components/venue/VenueAutocomplete'
 import type { TrainerPoint } from '@/components/map/TrainerDots'
+import { DistrictColorKey, type DistrictKeyRow } from '@/components/map/DistrictColorKey'
 
 interface SkillSubject {
   item_id: number
@@ -64,6 +65,8 @@ interface MapControlsProps {
   onOpenReview:          () => void
   onCloseReview:         () => void
   onInviteSent:          (results: { sent: SentResult[]; skipped: SkippedResult[] }) => void
+  // Dashboard colour key (PPD badge + trainer districts); null = hidden
+  districtKey?:          DistrictKeyRow[] | null
 }
 
 function LocationIcon() {
@@ -127,6 +130,7 @@ export function MapControls({
   onOpenReview,
   onCloseReview,
   onInviteSent,
+  districtKey,
 }: MapControlsProps) {
   const { t } = useLanguage()
 
@@ -324,9 +328,12 @@ export function MapControls({
         </div>
       )}
 
-      {/* ── Bottom-right: radius slider (when centre is set) ── */}
-      {centre && (
-        <div className="pointer-events-auto absolute bottom-8 right-4 z-[1000]">
+      {/* ── Bottom-right: colour key (zoomed-in dashboard) above the
+           radius slider (when centre is set) ── */}
+      {(districtKey || centre) && (
+        <div className="pointer-events-auto absolute bottom-8 right-4 z-[1000] flex flex-col items-end gap-2">
+          {districtKey && <DistrictColorKey rows={districtKey} />}
+          {centre && (
           <div className="w-52 rounded-xl border border-white/60 bg-white/90 p-3 shadow-float backdrop-blur-md">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-medium text-slate">{t.map.radiusLabel}</span>
@@ -356,6 +363,7 @@ export function MapControls({
               {appMode === 'B' ? t.map.clearVenue : t.map.clearCentre}
             </button>
           </div>
+          )}
         </div>
       )}
     </>
