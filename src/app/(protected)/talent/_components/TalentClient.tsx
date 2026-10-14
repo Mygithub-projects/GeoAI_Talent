@@ -16,6 +16,8 @@ import { TransferModal, type NewLocation } from './TransferModal'
 // DashboardMap — importing from the Leaflet module would defeat the
 // ssr:false dynamic import).
 const DRILL_ZOOM = 10
+// Search results shown at once; more → "keep typing"
+const SEARCH_LIST_MAX = 8
 
 // Talent congestion: a district holds a disproportionate share of the
 // filtered trainers — at least CONGESTION_FACTOR × the statewide mean
@@ -53,6 +55,8 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
   const [selectedItemIds, setSelectedItemIds] = useState<number[]>([])
   const [districtFilter, setDistrictFilter]   = useState('')
   const [nameQuery, setNameQuery]             = useState('')
+  // Query a result was picked for — the list collapses until the user types again
+  const [pickedQuery, setPickedQuery]         = useState<string | null>(null)
   const [centre, setCentre]                   = useState<[number, number] | null>(null)
   const [radiusKm, setRadiusKm]               = useState(50)
   const [dateFrom, setDateFrom]               = useState('')
@@ -160,6 +164,15 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
     })
   }, [analysisPins, districtFilter, nameQuery])
 
+  // Search results list: the name/ID matches among the visible pins, one
+  // row per trainer (the pin feed can repeat a trainer — TrainerDots dedupes too)
+  const searchNeedle = nameQuery.trim()
+  const searchMatches = useMemo(() => {
+    if (!searchNeedle) return []
+    const byId = new Map(visiblePins.map(p => [p.trainer_id, p]))
+    return [...byId.values()].sort((a, b) => (a.trainer_name ?? '').localeCompare(b.trainer_name ?? ''))
+  }, [visiblePins, searchNeedle])
+
   const heatPoints = useMemo(
     () => visiblePins.map(p => [p.lat, p.lng] as [number, number]),
     [visiblePins]
@@ -237,6 +250,15 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
       setDropMode('none')
     }
   }, [dropMode])
+
+  // Search result picked: select the trainer and zoom in far enough that
+  // individual pins (not the heatmap) are shown around them.
+  const handleSearchPick = useCallback((p: TrainerPoint) => {
+    setSelectedId(p.trainer_id)
+    setSelectedSnap(p)
+    setPickedQuery(nameQuery)
+    flyTo(p.lat, p.lng, DRILL_ZOOM + 3)
+  }, [flyTo, nameQuery])
 
   const handleTrainerSelect = useCallback((trainerId: string) => {
     setSelectedId(trainerId)
@@ -411,11 +433,54 @@ export function TalentClient({ skills, isAdmin, initialCenter, initialZoom }: Pr
             <input
               type="text"
               value={nameQuery}
-              onChange={e => setNameQuery(e.target.value)}
+              onChange={e => { setNameQuery(e.target.value); setPickedQuery(null) }}
               placeholder={tt.searchPlaceholder}
               aria-label={tt.searchPlaceholder}
               className={inputCls}
             />
+            {/* Matching trainers — click to select + zoom (the map alone
+                barely changes in heatmap view, so a list is needed) */}
+            {searchNeedle && pickedQuery !== nameQuery && (
+              <div className="mt-1 rounded-lg border border-border bg-white shadow-card">
+                {searchMatches.length === 0 ? (
+                  <p className="px-2.5 py-2 text-[11px] text-muted">{tt.searchNoMatch}</p>
+                ) : (
+                  <>
+                    <p className="px-2.5 pt-1.5 text-[10px] text-muted">{tt.searchPickHint}</p>
+                    <ul className="max-h-56 overflow-y-auto py-1">
+                      {searchMatches.slice(0, SEARCH_LIST_MAX).map(p => (
+                        <li key={p.trainer_id}>
+                          <button
+                            type="button"
+                            onClick={() => handleSearchPick(p)}
+                            className="flex w-full items-start gap-2 px-2.5 py-1.5 text-left hover:bg-surface"
+                          >
+                            <span
+                              className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full border border-white shadow-sm"
+                              style={{ background: districtColor(p.ppd_district) }}
+                              aria-hidden
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-[11px] font-semibold text-ink-navy">{p.trainer_name}</span>
+                              <span className="block truncate text-[10px] text-muted">
+                                <span className="font-mono">{p.trainer_id}</span>
+                                {p.ppd_district ? ` · ${p.ppd_district}` : ''}
+                                {p.school_name ? ` · ${p.school_name}` : ''}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {searchMatches.length > SEARCH_LIST_MAX && (
+                      <p className="border-t border-border px-2.5 py-1.5 text-[10px] text-muted">
+                        {tt.searchMore.replace('{n}', String(searchMatches.length - SEARCH_LIST_MAX))}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="mb-3">

@@ -430,6 +430,9 @@ export interface Translations {
     title: string
     subtitle: string
     searchPlaceholder: string
+    searchNoMatch: string
+    searchMore: string
+    searchPickHint: string
     allDistricts: string
     dateFrom: string
     dateTo: string
@@ -1239,6 +1242,9 @@ export const en: Translations = {
     title: 'Talent Distribution',
     subtitle: 'Where trainer expertise is concentrated — and where it is missing.',
     searchPlaceholder: 'Trainer name or ID…',
+    searchNoMatch: 'No trainer matches this name or ID.',
+    searchMore: '+{n} more — keep typing to narrow down',
+    searchPickHint: 'Select a trainer to zoom to them',
     allDistricts: 'All districts',
     dateFrom: 'From',
     dateTo: 'To',
