@@ -4,6 +4,7 @@ import { useState, useMemo, Fragment } from 'react'
 import Link from 'next/link'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import type { Translations } from '@/i18n/en'
+import { apiErrorText } from '@/lib/bookingConflictText'
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ export interface TrainerInviteRow {
   trainer_id:        string
   trainer_name:      string | null
   trainer_email:     string | null
-  status:            'Pending Invite' | 'Confirmed' | 'Declined'
+  status:            'Pending Invite' | 'Confirmed' | 'Declined' | 'No Response'
   invited_at:        string
   responded_at:      string | null
   invite_expires_at: string | null
@@ -93,6 +94,7 @@ function statusLabel(status: string, t: Translations): string {
     case 'Pending Invite': return t.backlog.statusPendingInvite
     case 'Confirmed':      return t.backlog.statusConfirmed
     case 'Declined':       return t.backlog.statusDeclined
+    case 'No Response':    return t.booking.statusNoResponse
     case 'Cancelled':      return t.backlog.statusCancelled
     default:               return status
   }
@@ -115,6 +117,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> =
   'Pending Invite': { bg: '#FEF3C7', text: '#92400E', dot: '#F59E0B' },
   'Confirmed':      { bg: '#CCFBF1', text: '#0F766E', dot: '#14B8A6' },
   'Declined':       { bg: '#FEE2E2', text: '#B91C1C', dot: '#EF4444' },
+  'No Response':    { bg: '#F1F5F9', text: '#64748B', dot: '#94A3B8' },
   'Cancelled':      { bg: '#E2E8F0', text: '#64748B', dot: '#94A3B8' },
 }
 
@@ -154,6 +157,7 @@ const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
   'engagement.cancel':   { bg: '#FEE2E2', text: '#B91C1C' },
   'engagement.accept':   { bg: '#CCFBF1', text: '#0F766E' },
   'engagement.decline':  { bg: '#FEE2E2', text: '#B91C1C' },
+  'engagement.release_no_response': { bg: '#F1F5F9', text: '#475569' },
   'user.approve':        { bg: '#DBEAFE', text: '#1E40AF' },
   'user.suspend':        { bg: '#FEF3C7', text: '#92400E' },
   'user.role_change':    { bg: '#E0E7FF', text: '#3730A3' },
@@ -181,6 +185,8 @@ function TrainerInviteStatusCell({ row, t }: { row: TrainerInviteRow; t: Transla
     return <span style={{ fontSize: 11, color: '#0F766E', fontWeight: 700 }}>✓ {t.backlog.inviteAccepted}</span>
   if (row.status === 'Declined')
     return <span style={{ fontSize: 11, color: '#B91C1C', fontWeight: 700 }}>✗ {t.backlog.inviteDeclined}</span>
+  if (row.status === 'No Response')
+    return <span style={{ fontSize: 11, color: '#64748B', fontStyle: 'italic' }}>{t.booking.releasedNote}</span>
   if (!row.invite_expires_at)
     return <span style={{ color: '#94A3B8' }}>—</span>
   const expired = new Date(row.invite_expires_at) < new Date()
@@ -288,7 +294,7 @@ interface WorkshopsTableProps {
   onToggleExpand:    (engagementId: string) => void
   rowAction:         Record<string, string | null>
   rowError:          Record<string, string | null>
-  onReinvite:        (engId: string, trainerId: string) => void
+  onReinvite:        (engId: string, trainerId: string, status: TrainerInviteRow['status']) => void
   onConfirm:         (engId: string, trainerId: string) => void
   onCancelTrainer:   (engId: string, trainerId: string) => void
   onCancelWorkshop:  (engId: string) => void
@@ -429,6 +435,11 @@ function WorkshopsTable({
                               const busy   = rowAction[key]
                               const errMsg = rowError[key]
                               const isPending = tr.status === 'Pending Invite'
+                              // Released (031) or declined trainers can be re-invited by
+                              // the coordinator while the workshop is still open
+                              const workshopOpen = w.workflow_status === 'Draft' || w.workflow_status === 'Pending Invite'
+                              const canReinvite  = isPending || (workshopOpen && (tr.status === 'No Response' || tr.status === 'Declined'))
+                              const canConfirm   = isPending || (workshopOpen && tr.status === 'No Response')
                               return (
                                 <tr key={tr.engagement_trainer_id} style={{ borderTop: '1px solid #E2E8F0' }}>
                                   <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
@@ -448,12 +459,12 @@ function WorkshopsTable({
                                   </td>
                                   <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                      {isPending && (
-                                        <ActionBtn label={t.backlog.reinvite} variant="amber"
+                                      {canReinvite && (
+                                        <ActionBtn label={isPending ? t.backlog.reinvite : t.booking.reinvite} variant="amber"
                                           loading={busy === 'reinvite'} disabled={!!busy}
-                                          onClick={() => onReinvite(w.engagement_id, tr.trainer_id)} />
+                                          onClick={() => onReinvite(w.engagement_id, tr.trainer_id, tr.status)} />
                                       )}
-                                      {isPending && (
+                                      {canConfirm && (
                                         <ActionBtn label={`✓ ${t.backlog.confirm}`} variant="teal"
                                           loading={busy === 'confirm'} disabled={!!busy}
                                           onClick={() => onConfirm(w.engagement_id, tr.trainer_id)} />
@@ -463,7 +474,7 @@ function WorkshopsTable({
                                           loading={busy === 'cancel'} disabled={!!busy}
                                           onClick={() => onCancelTrainer(w.engagement_id, tr.trainer_id)} />
                                       )}
-                                      {!isPending && <span style={{ color: '#CBD5E1', fontSize: 11 }}>—</span>}
+                                      {!canReinvite && !canConfirm && <span style={{ color: '#CBD5E1', fontSize: 11 }}>—</span>}
                                       {errMsg && (
                                         <span style={{ fontSize: 10, color: '#B91C1C', marginTop: 2 }}>⚠ {errMsg}</span>
                                       )}
@@ -599,10 +610,10 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? t.backlog.actionFailed)
+      if (!res.ok) throw new Error(apiErrorText(t, data, t.backlog.actionFailed))
       onSuccess(data)
     } catch (e) {
-      setRowError(s => ({ ...s, [key]: (e as Error).message.slice(0, 60) }))
+      setRowError(s => ({ ...s, [key]: (e as Error).message.slice(0, 120) }))
     } finally {
       setRowAction(s => ({ ...s, [key]: null }))
     }
@@ -622,9 +633,15 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
     }))
   }
 
-  function handleReinvite(engId: string, trainerId: string) {
+  function handleReinvite(engId: string, trainerId: string, status: TrainerInviteRow['status']) {
+    if (status === 'Declined' && !window.confirm(t.booking.reinviteDeclinedPrompt)) return
     callAction(`trn:${engId}:${trainerId}`, '/api/engagements/reinvite', { engagement_id: engId, trainer_id: trainerId }, (data) => {
-      updateTrainer(engId, trainerId, { invite_expires_at: data.token_expires_at as string, responded_at: null })
+      updateTrainer(engId, trainerId, {
+        status: 'Pending Invite',
+        invite_expires_at: data.token_expires_at as string,
+        responded_at: null,
+        invited_at: new Date().toISOString(),
+      })
       if (data.email_delivered === false) {
         setRowError(s => ({ ...s, [`trn:${engId}:${trainerId}`]: t.backlog.reinviteEmailNotDelivered }))
       }
@@ -684,6 +701,7 @@ export function BacklogClient({ workshops: initialWorkshops, auditLog, isAdmin, 
     { label: t.backlog.statusPendingInvite, status: 'Pending Invite', bg: '#FEF3C7', color: '#92400E', value: flatTrainers.filter(tr => tr.status === 'Pending Invite').length },
     { label: t.backlog.statusConfirmed,   status: 'Confirmed',      bg: '#CCFBF1', color: '#0F766E', value: flatTrainers.filter(tr => tr.status === 'Confirmed').length },
     { label: t.backlog.statusDeclined,    status: 'Declined',       bg: '#FEE2E2', color: '#B91C1C', value: flatTrainers.filter(tr => tr.status === 'Declined').length },
+    { label: t.booking.statusNoResponse,  status: 'No Response',    bg: '#F1F5F9', color: '#64748B', value: flatTrainers.filter(tr => tr.status === 'No Response').length },
   ]
 
   const hasFilters = !!searchQuery || !!dateFrom || !!dateTo || !!statusFilter

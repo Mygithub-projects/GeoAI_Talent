@@ -332,6 +332,7 @@ export interface Translations {
     adoptConfirmed: string
     adoptPending: string
     adoptDeclined: string
+    adoptNoResponse: string
     adoptAcceptRate: string
     adoptStaffed: string
     adoptStaffedSub: string
@@ -389,6 +390,7 @@ export interface Translations {
     chipAccepted: string
     chipPending: string
     chipDeclined: string
+    chipNoResponse: string
     chipEstCost: string
     thWorkshop: string
     thDates: string
@@ -398,6 +400,7 @@ export interface Translations {
     thAccepted: string
     thPending: string
     thDeclined: string
+    thNoResponse: string
     thEstCost: string
     costInvitedPrefix: string
     thTrainer: string
@@ -792,6 +795,25 @@ export interface Translations {
     footnote: string
     reviewWarning: string
   }
+  booking: {
+    statusNoResponse: string
+    releasedNote: string
+    reinvite: string
+    reinviteDeclinedPrompt: string
+    conflict: string
+    conflictGeneric: string
+    reviewConflictTitle: string
+    rescheduleConflictTitle: string
+    inviteButton: string
+    inviteButtonHint: string
+    addingToWorkshop: string
+    datesLockedNote: string
+    leaveWorkshop: string
+    loadingWorkshop: string
+    workshopLoadFailed: string
+    workshopClosed: string
+    releasedFootnote: string
+  }
 }
 
 export const en: Translations = {
@@ -1144,6 +1166,7 @@ export const en: Translations = {
     adoptConfirmed: 'Accepted',
     adoptPending: 'Awaiting reply',
     adoptDeclined: 'Declined',
+    adoptNoResponse: 'No response',
     adoptAcceptRate: 'Accept rate (of responses)',
     adoptStaffed: 'Workshops fully staffed',
     adoptStaffedSub: 'of workshops with invitations sent',
@@ -1201,6 +1224,7 @@ export const en: Translations = {
     chipAccepted: 'Accepted',
     chipPending: 'Pending',
     chipDeclined: 'Declined',
+    chipNoResponse: 'No Response',
     chipEstCost: 'Est. cost (confirmed)',
     thWorkshop: 'Workshop',
     thDates: 'Dates',
@@ -1210,6 +1234,7 @@ export const en: Translations = {
     thAccepted: 'Accepted',
     thPending: 'Pending',
     thDeclined: 'Declined',
+    thNoResponse: 'No resp.',
     thEstCost: 'Est. cost',
     costInvitedPrefix: 'all invited:',
     thTrainer: 'Trainer',
@@ -1605,5 +1630,24 @@ export const en: Translations = {
     untitled: '(untitled workshop)',
     footnote: 'Based on workshops recorded in GeoAI Talent Agent only. Engagements arranged outside the system are not included.',
     reviewWarning: 'At or over the yearly engagement limit:',
+  },
+  booking: {
+    statusNoResponse: 'No Response',
+    releasedNote: 'Released — no response before the invitation expired',
+    reinvite: 'Re-invite',
+    reinviteDeclinedPrompt: 'This trainer declined the invitation. Re-invite them anyway?',
+    conflict: 'Already booked on "{title}" ({dates})',
+    conflictGeneric: 'This trainer is already booked on overlapping dates.',
+    reviewConflictTitle: 'Already booked on overlapping dates — these trainers will be skipped:',
+    rescheduleConflictTitle: 'The new dates clash for these trainers, so the workshop was not rescheduled:',
+    inviteButton: 'Invite trainers',
+    inviteButtonHint: 'Opens the search screen for this workshop to invite new trainers or re-invite released ones',
+    addingToWorkshop: 'Inviting for this workshop',
+    datesLockedNote: 'Dates are fixed for this workshop. To change them, use Edit in the Calendar.',
+    leaveWorkshop: 'Start a new search instead',
+    loadingWorkshop: 'Loading workshop…',
+    workshopLoadFailed: 'This workshop could not be opened.',
+    workshopClosed: 'This workshop can no longer take invitations — it has started, been cancelled or is fully staffed.',
+    releasedFootnote: 'Trainers who do not respond before their invitation expires are released back to the trainer pool automatically. Nothing is re-sent — re-invite them here if needed.',
   },
 }

@@ -160,6 +160,24 @@ purpose (renaming the cookie would reset every user's saved language preference)
   user (user decision — overall load must be visible), unlike `/calendar`/`/reports` scoping. Every
   count/history display carries the footnote that engagements outside the system aren't included.
   Readers are best-effort: if the counts can't be read the badge is simply absent.
+- **Trainer booking + auto-release** (migration 031, user decisions 2026-11-06): a trainer is booked
+  (hidden from the search) ONLY for the dates of a non-cancelled workshop they are Pending Invite or
+  Confirmed on — a multi-day search hides them if ANY day clashes. **No double-booking, ever:** DB
+  triggers `trg_guard_trainer_overlap` / `trg_guard_engagement_dates` refuse a second overlapping
+  booking (SQLSTATE 23P01); routes pre-check with `findBookingConflicts()` in `src/lib/trainerBooking.ts`
+  and return 409 `TRAINER_DATE_CONFLICT` (invite = skip that trainer; re-invite / manual confirm /
+  reschedule = BLOCKED). Invite links last `INVITE_EXPIRY_DAYS` but never past 23:59 Sarawak time on
+  the workshop's start date (`inviteLinkExpiry()` — use it for every new token). An hourly pg_cron job
+  (`fn_release_unanswered_invites()`, scheduled by 031b) turns every Pending Invite whose links have
+  all expired into **'No Response'** (`released_at` set), recomputes the workshop (→ Draft if no longer
+  staffed), audits `engagement.release_no_response` (actor NULL) and sends the creator ONE bilingual bell
+  notification per workshop (`trainer_no_response`). **It never re-sends anything — re-inviting is
+  always a user action.** No Response AND Declined trainers can be re-invited (Declined after a
+  confirm prompt) from the Backlog or the search screen; that books them again, so it is conflict-checked.
+  The Calendar's **Invite trainers** button (creator/admin, workshop not started, not fully staffed)
+  opens `/dashboard?engagement=<id>` with the workshop preloaded and its venue/title/dates/size LOCKED
+  — dates change only via the Calendar's Edit (reschedule) flow. It is loaded SERVER-side (map opens at the venue — never fly in from statewide) and runs ONE recommendation search automatically; later skill/radius changes wait for the Find button. Each search saves its skills (`target_item_ids`, all of them) + radius on the workshop. Undo everything with
+  `db/migrations/031_rollback.sql` (restores the 3-status rule and turns No Response back into Pending).
 - **Workshop Calendar** (`/calendar`): scoped like `/engagements` and `/reports` (user decision
   2026-07-12, REPLACING the original visible-to-all rule) — admins see every workshop, non-admins
   only workshops they created. The scoping lives in `GET /api/calendar` (reads go through the
@@ -179,7 +197,7 @@ purpose (renaming the cookie would reset every user's saved language preference)
   (mounted in AppShell, overlay at `z-[4000]`, the topmost layer) + `steps.ts`. Steps target
   `[data-tour="…"]` attributes on STABLE chrome only (never data rows — missing targets are skipped
   after 8s); copy lives in the i18n `tour` namespace (button label is "Tour" in BOTH languages, user
-  decision). Auto-starts once per browser via localStorage `geo-tour-done`; TopBar "Tour" button
+  decision). Auto-starts once per browser via localStorage `geo-tour-done` (but never over `/dashboard?engagement=…`, the Calendar-Invite screen); TopBar "Tour" button
   re-runs it. When adding a screen, add its steps + `data-tour` anchors; keep `adminOnly` on
   admin-only steps. Do not add a tour library — the engine is deliberately dependency-free.
 - **Settings / My Account** (`/settings`, 2026-07-13): the only self-service profile surface. A user

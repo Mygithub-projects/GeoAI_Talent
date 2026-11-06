@@ -81,6 +81,8 @@ export default async function AnalyticsPage() {
 
   const confirmedInvites = inviteRows.filter(i => i.status === 'Confirmed')
   const declinedInvites  = inviteRows.filter(i => i.status === 'Declined')
+  // Released unanswered (migration 031) — shown, but NOT counted as declines
+  const noResponseInvites = inviteRows.filter(i => i.status === 'No Response')
   const pendingInvites   = inviteRows.filter(i => i.status === 'Pending Invite')
   const respondedCount   = confirmedInvites.length + declinedInvites.length
   const acceptRatePct    = respondedCount > 0
@@ -149,6 +151,7 @@ export default async function AnalyticsPage() {
       confirmed: confirmedInvites.length,
       pending:   pendingInvites.length,
       declined:  declinedInvites.length,
+      noResponse: noResponseInvites.length,
       acceptRatePct,
       workshopsInvited: invitedWorkshopIds.size,
       workshopsStaffed: staffedCount,

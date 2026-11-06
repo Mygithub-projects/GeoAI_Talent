@@ -44,6 +44,7 @@ export interface ReportWorkshop {
   confirmedCount:   number
   pendingCount:     number
   declinedCount:    number
+  noResponseCount:  number   // released unanswered (migration 031)
   estCostConfirmedMyr: number
   estCostInvitedMyr:   number
   trainers:         ReportTrainerRow[]
@@ -186,6 +187,7 @@ export async function buildReportWorkshops(
       confirmedCount:   confirmedRows.length,
       pendingCount:     rows.filter(r => r.status === 'Pending Invite').length,
       declinedCount:    rows.filter(r => r.status === 'Declined').length,
+      noResponseCount:  rows.filter(r => r.status === 'No Response').length,
       estCostConfirmedMyr: sum(confirmedRows),
       estCostInvitedMyr:   sum(rows),
       trainers:         rows,

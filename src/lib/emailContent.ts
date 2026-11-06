@@ -806,6 +806,11 @@ export function buildTrainerResponseNotifyEmail(p: TrainerResponseNotifyEmailPar
       isBm
         ? `<strong>${escapeHtml(p.trainerName)}</strong> telah <strong>${p.accepted ? 'MENERIMA' : 'MENOLAK'}</strong> jemputan bagi program di bawah.`
         : `<strong>${escapeHtml(p.trainerName)}</strong> has <strong>${p.accepted ? 'ACCEPTED' : 'DECLINED'}</strong> the invitation for the programme below.`,
+      // A decline frees the trainer at once (migration 031 rules) — say so,
+      // and point to where another trainer can be invited
+      ...(p.accepted ? [] : [isBm
+        ? 'Jurulatih ini kini kembali ke senarai jurulatih. Anda boleh menjemput jurulatih lain (atau menjemput semula jurulatih ini jika perlu) melalui butang Jemput dalam Kalendar.'
+        : 'This trainer is now back in the trainer pool. You can invite another trainer (or re-invite this one if needed) from the Invite button in the Calendar.']),
     ],
     detailRows: [
       { label: isBm ? 'Program' : 'Programme', value: escapeHtml(p.trainingTitle), strong: true },

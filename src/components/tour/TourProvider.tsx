@@ -160,6 +160,10 @@ export function TourProvider({ userRole, children }: { userRole: string; childre
   const autoTried = useRef(false)
   useEffect(() => {
     if (autoTried.current || index != null || pathname !== '/dashboard') return
+    // Not over a workshop reopened from the Calendar's Invite button
+    // (/dashboard?engagement=…) — the user came to staff it, and the
+    // welcome card would cover it. The tour starts on a later plain visit.
+    if (new URLSearchParams(window.location.search).has('engagement')) return
     let done = '1'
     try { done = localStorage.getItem(DONE_KEY) ?? '' } catch { done = '1' }
     if (done) return

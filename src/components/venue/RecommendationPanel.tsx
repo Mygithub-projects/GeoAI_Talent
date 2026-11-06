@@ -5,11 +5,13 @@ import type { TrainerPoint, TravelOption } from '@/components/map/TrainerDots'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { EngagementBadge, EngagementHistoryInline } from '@/components/trainer/EngagementLimit'
 import { limitLevel } from '@/lib/engagementLimit'
+import { apiErrorText } from '@/lib/bookingConflictText'
+import type { Translations } from '@/i18n/en'
 
 export interface InvitedTrainerStatus {
   trainer_id:   string
   trainer_name: string
-  status:       'Pending Invite' | 'Confirmed' | 'Declined'
+  status:       'Pending Invite' | 'Confirmed' | 'Declined' | 'No Response'
   invited_at:   string
   responded_at: string | null
 }
@@ -24,6 +26,9 @@ interface RecommendationPanelProps {
   invitedTrainers:     InvitedTrainerStatus[]
   onRefreshStatus:     () => void
   isRefreshingStatus:  boolean
+  // Re-invite released (No Response) / Declined trainers — only while the
+  // workshop can still take invitations (2026-11-06)
+  canReinvite?:        boolean
 }
 
 function ModeChip({ mode }: { mode: string }) {
@@ -51,27 +56,78 @@ function ModeChip({ mode }: { mode: string }) {
   )
 }
 
-function InvitedTrainerRow({ trainer }: { trainer: InvitedTrainerStatus }) {
+function InvitedTrainerRow({ trainer, engagementId, canReinvite, onReinvited, t }: {
+  trainer:      InvitedTrainerStatus
+  engagementId: string | null
+  canReinvite:  boolean
+  onReinvited:  () => void
+  t:            Translations
+}) {
+  const [busy, setBusy]   = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const pill = trainer.status === 'Confirmed'
-    ? { text: '✓ Accepted', color: '#0F766E' }
+    ? { text: `✓ ${t.backlog.inviteAccepted}`, color: '#0F766E' }
     : trainer.status === 'Declined'
-    ? { text: '✗ Declined', color: '#B91C1C' }
-    : { text: '⏳ Awaiting', color: '#92400E' }
+    ? { text: `✗ ${t.backlog.inviteDeclined}`, color: '#B91C1C' }
+    : trainer.status === 'No Response'
+    ? { text: `○ ${t.booking.statusNoResponse}`, color: '#64748B' }
+    : { text: `⏳ ${t.backlog.awaiting}`, color: '#92400E' }
+  const showReinvite = canReinvite && !!engagementId
+    && (trainer.status === 'No Response' || trainer.status === 'Declined')
+
+  async function reinvite() {
+    if (trainer.status === 'Declined' && !window.confirm(t.booking.reinviteDeclinedPrompt)) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res  = await fetch('/api/engagements/reinvite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engagement_id: engagementId, trainer_id: trainer.trainer_id }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(apiErrorText(t, data, t.backlog.actionFailed))
+      onReinvited()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, borderBottom: '1px solid #F1F5F9' }}>
-      <span style={{ fontSize: 11, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {trainer.trainer_name}
-      </span>
-      <span style={{ fontSize: 10, fontWeight: 700, color: pill.color, whiteSpace: 'nowrap', flexShrink: 0 }}>
-        {pill.text}
-      </span>
+    <div style={{ padding: '6px 12px', borderBottom: '1px solid #F1F5F9' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontSize: 11, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {trainer.trainer_name}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: pill.color, whiteSpace: 'nowrap' }}>
+            {pill.text}
+          </span>
+          {showReinvite && (
+            <button
+              onClick={reinvite}
+              disabled={busy}
+              style={{
+                fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 6,
+                border: '1px solid #F59E0B', background: '#FEF3C7', color: '#92400E',
+                cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap',
+              }}
+            >
+              {busy ? '…' : t.booking.reinvite}
+            </button>
+          )}
+        </span>
+      </div>
+      {error && <p style={{ margin: '3px 0 0', fontSize: 9, color: '#B91C1C', lineHeight: 1.3 }}>⚠ {error}</p>}
     </div>
   )
 }
 
 export function RecommendationPanel({
   candidates, engagementId, selectedIds, onToggleSelect, onOpenReview, trainersNeeded,
-  invitedTrainers, onRefreshStatus, isRefreshingStatus,
+  invitedTrainers, onRefreshStatus, isRefreshingStatus, canReinvite = false,
 }: RecommendationPanelProps) {
   const { t } = useLanguage()
   // Trainer whose engagement history is expanded under their card
@@ -286,8 +342,20 @@ export function RecommendationPanel({
               </button>
             </div>
             {invitedTrainers.map(inv => (
-              <InvitedTrainerRow key={inv.trainer_id} trainer={inv} />
+              <InvitedTrainerRow
+                key={inv.trainer_id}
+                trainer={inv}
+                engagementId={engagementId}
+                canReinvite={canReinvite}
+                onReinvited={onRefreshStatus}
+                t={t}
+              />
             ))}
+            {invitedTrainers.some(inv => inv.status === 'No Response') && (
+              <p style={{ margin: 0, padding: '6px 12px', fontSize: 9, color: '#64748B', lineHeight: 1.4 }}>
+                {t.booking.releasedFootnote}
+              </p>
+            )}
           </div>
         )}
 

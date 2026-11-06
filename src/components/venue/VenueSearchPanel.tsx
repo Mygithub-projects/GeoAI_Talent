@@ -12,6 +12,17 @@ interface SkillSubject {
   name_bm: string
 }
 
+// Set when the panel was opened from the Calendar's Invite button
+// (/dashboard?engagement=<id>, 2026-11-06): the workshop already exists,
+// so its venue, title, dates and size are fixed here — trainers are added
+// to it rather than creating the event again. Dates change only through
+// the Calendar's Edit (reschedule) flow.
+export interface WorkshopLock {
+  loading: boolean
+  error:   string | null
+  open:    boolean   // can still take invitations
+}
+
 interface VenueSearchPanelProps {
   skills:           SkillSubject[]
   selectedItemIds:  number[]
@@ -35,6 +46,8 @@ interface VenueSearchPanelProps {
   onTrainingTitleChange:  (v: string) => void
   trainersNeeded:         number
   onTrainersNeededChange: (n: number) => void
+  workshopLock?:          WorkshopLock | null
+  onLeaveWorkshop?:       () => void
 }
 
 export function VenueSearchPanel({
@@ -58,8 +71,11 @@ export function VenueSearchPanel({
   onTrainingTitleChange,
   trainersNeeded,
   onTrainersNeededChange,
+  workshopLock = null,
+  onLeaveWorkshop,
 }: VenueSearchPanelProps) {
   const { t } = useLanguage()
+  const locked = !!workshopLock
 
   const today = getTodayDateString()
   const isStartPast = !!startDate && startDate < today
@@ -71,10 +87,34 @@ export function VenueSearchPanel({
     !!endDate &&
     startDate <= endDate &&
     isUpcoming &&
-    !isRecommending
+    !isRecommending &&
+    (!workshopLock || (!workshopLock.loading && !workshopLock.error && workshopLock.open))
 
   return (
     <div className="rounded-xl bg-white/90 shadow-float backdrop-blur-md border border-white/60 p-3 w-64 flex flex-col gap-3">
+
+      {/* ── Existing workshop (from the Calendar's Invite button) ── */}
+      {workshopLock && (
+        <div className="rounded-lg border border-royal-blue/30 bg-royal-blue/5 px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-royal-blue">
+            {workshopLock.loading ? t.booking.loadingWorkshop : t.booking.addingToWorkshop}
+          </p>
+          {workshopLock.error && (
+            <p className="mt-1 text-[10px] font-medium text-red-700">{workshopLock.error}</p>
+          )}
+          {!workshopLock.loading && !workshopLock.error && !workshopLock.open && (
+            <p className="mt-1 text-[10px] font-medium text-amber-700">{t.booking.workshopClosed}</p>
+          )}
+          {onLeaveWorkshop && (
+            <button
+              onClick={onLeaveWorkshop}
+              className="mt-1 text-[10px] font-medium text-royal-blue underline-offset-2 hover:underline"
+            >
+              {t.booking.leaveWorkshop}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── Venue ── */}
       <div>
@@ -92,7 +132,7 @@ export function VenueSearchPanel({
                 {venueName}
               </p>
             </div>
-            <button
+            {!locked && <button
               onClick={onClearVenue}
               aria-label={t.map.clearVenue}
               className="shrink-0 text-muted transition-colors hover:text-slate"
@@ -100,7 +140,7 @@ export function VenueSearchPanel({
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
               </svg>
-            </button>
+            </button>}
           </div>
         ) : (
           <>
@@ -135,6 +175,7 @@ export function VenueSearchPanel({
           value={trainingTitle}
           onChange={e => onTrainingTitleChange(e.target.value)}
           placeholder={t.map.trainingTitle}
+          readOnly={locked}
           className="w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
         />
       </div>
@@ -151,6 +192,7 @@ export function VenueSearchPanel({
               type="date"
               value={startDate}
               onChange={e => onStartDateChange(e.target.value)}
+              disabled={locked}
               className="w-full cursor-pointer rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
               aria-label={t.map.startDate}
               min={today}
@@ -163,11 +205,15 @@ export function VenueSearchPanel({
               value={endDate}
               min={startDate || today}
               onChange={e => onEndDateChange(e.target.value)}
+              disabled={locked}
               className="w-full cursor-pointer rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
               aria-label={t.map.endDate}
             />
           </div>
-          {(isStartPast || isEndPast) && (
+          {locked && (
+            <p className="text-[10px] leading-snug text-muted">{t.booking.datesLockedNote}</p>
+          )}
+          {!locked && (isStartPast || isEndPast) && (
             <p className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-medium text-amber-700">
               Please select a date today or later.
             </p>
@@ -180,6 +226,7 @@ export function VenueSearchPanel({
               max={20}
               value={trainersNeeded}
               onChange={e => onTrainersNeededChange(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              disabled={locked}
               className="w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-xs text-slate focus:outline-none focus:ring-2 focus:ring-royal-blue"
               aria-label={t.map.trainersNeeded}
             />

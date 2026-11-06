@@ -118,6 +118,7 @@ export function NotificationBell() {
                         className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${
                           n.type === 'trainer_accepted' || n.type === 'account_approved' ? 'bg-teal'
                             : n.type === 'trainer_declined' ? 'bg-red-500'
+                            : n.type === 'trainer_no_response' ? 'bg-slate-400'
                             : n.type === 'user_pending_approval' ? 'bg-amber'
                             : 'bg-royal-blue'
                         }`}

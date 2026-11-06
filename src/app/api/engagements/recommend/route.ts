@@ -255,26 +255,50 @@ export async function POST(req: NextRequest) {
     engagement: counts?.get(c.trainer_id) ?? null,
   }))
 
+  // The search criteria saved with the workshop — ALL selected skills
+  // (migration 031's target_item_ids) and the radius — so reopening it from
+  // the Calendar's Invite button repeats the LATEST search exactly
+  const itemIds = (target_item_ids?.length ?? 0) > 0 ? target_item_ids! : null
+  const criteria = {
+    target_item_id:   itemIds ? itemIds[0] : null,
+    target_item_ids:  itemIds,
+    search_radius_km: clampedRadius,
+  }
+  // Self-heal until migration 031 (target_item_ids) is applied
+  const withoutItemIds = <T extends { target_item_ids?: unknown }>(row: T) => {
+    const copy = { ...row }
+    delete copy.target_item_ids
+    return copy
+  }
+  const isItemIdsColumnError = (e: { message?: string } | null) => !!e && /target_item_ids/i.test(e.message ?? '')
+
   // ── 5. Create the workshop's Draft engagement on the FIRST round only; later rounds reuse it ──
   if (!engagementId) {
-    const { data: engData, error: engErr } = await supabase
+    const draft = {
+      training_title:     training_title?.trim() || `Workshop ${start_date}`,
+      ...criteria,
+      dynamic_venue_name: venue_name       ?? null,
+      venue_school_code:  venue_school_code ?? null,
+      venue_lat,
+      venue_long,
+      start_date,
+      end_date,
+      trainers_needed:    trainersNeededResolved,
+      workflow_status:    'Draft',
+      created_by:         user.id,
+    }
+    let { data: engData, error: engErr } = await supabase
       .from('training_engagements')
-      .insert({
-        training_title:     training_title?.trim() || `Workshop ${start_date}`,
-        target_item_id:     (target_item_ids?.length ?? 0) > 0 ? target_item_ids![0] : null,
-        dynamic_venue_name: venue_name       ?? null,
-        venue_school_code:  venue_school_code ?? null,
-        venue_lat,
-        venue_long,
-        search_radius_km:   clampedRadius,
-        start_date,
-        end_date,
-        trainers_needed:    trainersNeededResolved,
-        workflow_status:    'Draft',
-        created_by:         user.id,
-      })
+      .insert(draft)
       .select('engagement_id')
       .single()
+    if (isItemIdsColumnError(engErr)) {
+      ;({ data: engData, error: engErr } = await supabase
+        .from('training_engagements')
+        .insert(withoutItemIds(draft))
+        .select('engagement_id')
+        .single())
+    }
 
     if (engErr || !engData) {
       console.error('[recommend] engagement insert', engErr)
@@ -282,6 +306,18 @@ export async function POST(req: NextRequest) {
     }
 
     engagementId = engData.engagement_id as string
+  } else {
+    // Later round on an existing workshop: remember the criteria used now.
+    // Best-effort — never fails the search. The caller could read the row
+    // through RLS above, so they are its creator or an admin.
+    const adminForCriteria = createAdminClient()
+    let { error: critErr } = await adminForCriteria
+      .from('training_engagements').update(criteria).eq('engagement_id', engagementId)
+    if (isItemIdsColumnError(critErr)) {
+      ;({ error: critErr } = await adminForCriteria
+        .from('training_engagements').update(withoutItemIds(criteria)).eq('engagement_id', engagementId))
+    }
+    if (critErr) console.error('[recommend] criteria update', critErr)
   }
 
   // ── 6. UPSERT travel_logs (admin client — no user INSERT policy on travel_logs) ─────────────

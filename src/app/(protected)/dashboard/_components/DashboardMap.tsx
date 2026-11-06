@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { MapCanvas } from '@/components/map/MapCanvas'
 import { MapControls } from '@/components/map/MapControls'
 import type { TrainerPoint } from '@/components/map/TrainerDots'
@@ -9,6 +10,9 @@ import type { FlyToTarget, FitBoundsTarget } from '@/components/map/MapInner'
 import type { VenueOption } from '@/components/venue/VenueAutocomplete'
 import type { SentResult, SkippedResult } from '@/components/venue/EmailReviewModal'
 import type { InvitedTrainerStatus } from '@/components/venue/RecommendationPanel'
+import type { WorkshopLock } from '@/components/venue/VenueSearchPanel'
+import type { EngagementSnapshot } from '@/lib/engagementSnapshot'
+import { getTodayDateString } from '@/lib/dateValidation'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import { districtColor } from '@/lib/districtColors'
 import { canonicalizeDistrict } from '@/lib/districts'
@@ -43,12 +47,37 @@ interface DashboardMapProps {
   initialCenter:       [number, number]
   initialZoom:         number
   initialDistrictName: string | null
+  // Existing workshop to reopen (Calendar → Invite), loaded server-side
+  initialWorkshop?:       EngagementSnapshot | null
+  // The URL named a workshop but it could not be opened (no access / gone)
+  initialWorkshopFailed?: boolean
+}
+
+// Map zoom when opening straight at a reopened workshop's venue
+const VENUE_ZOOM = 11
+
+// Whether a reopened workshop can still take invitations
+function workshopIsOpen(w: EngagementSnapshot): boolean {
+  const e = w.engagement
+  return (e.workflow_status === 'Draft' || e.workflow_status === 'Pending Invite')
+    && !!e.start_date && e.start_date >= getTodayDateString()
+    && w.confirmed_count < w.trainers_needed
 }
 
 type HeatPoint = [number, number]
 
-export function DashboardMap({ skills, initialCenter, initialZoom, initialDistrictName }: DashboardMapProps) {
+export function DashboardMap({
+  skills, initialCenter, initialZoom, initialDistrictName, initialWorkshop = null, initialWorkshopFailed = false,
+}: DashboardMapProps) {
+  const ws = initialWorkshop?.engagement ?? null
+  const venueStart: [number, number] | null =
+    ws && ws.venue_lat != null && ws.venue_long != null ? [ws.venue_lat, ws.venue_long] : null
+  // The map opens AT the reopened workshop's venue (no statewide fly-in)
+  const mapStartCenter = venueStart ?? initialCenter
+  const mapStartZoom   = venueStart ? VENUE_ZOOM : initialZoom
+  const openedFromCalendar = !!initialWorkshop || initialWorkshopFailed
   const { t } = useLanguage()
+  const router = useRouter()
 
   // A district-defaulted user (initialZoom === DRILL_ZOOM) starts already "drilled
   // down" into their own PPD — same centre/label a click on that PPD pin would set,
@@ -57,12 +86,14 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
   const startsDrilledDown = initialZoom >= DRILL_ZOOM
 
   // ── Shared state ──────────────────────────────────────────────
-  const [appMode, setAppMode]         = useState<'A' | 'B'>('A')
-  const [selectedItemIds, setSelectedItemIds] = useState<number[]>([])
-  const [centre, setCentre]           = useState<[number, number] | null>(startsDrilledDown ? initialCenter : null)
-  const [radiusKm, setRadiusKm]       = useState(50)
+  const [appMode, setAppMode]         = useState<'A' | 'B'>(openedFromCalendar ? 'B' : 'A')
+  const [selectedItemIds, setSelectedItemIds] = useState<number[]>(ws?.target_item_ids ?? [])
+  const [centre, setCentre]           = useState<[number, number] | null>(
+    venueStart ?? (startsDrilledDown && !openedFromCalendar ? initialCenter : null),
+  )
+  const [radiusKm, setRadiusKm]       = useState(ws?.search_radius_km ? Number(ws.search_radius_km) : 50)
   const [dropPinMode, setDropPinMode] = useState(false)
-  const [mapZoom, setMapZoom]         = useState(initialZoom)
+  const [mapZoom, setMapZoom]         = useState(mapStartZoom)
   // "My location" result: the exact centre array it set (so any later centre
   // change ends it) + the reverse-geocoded place name once known
   const [myLocation, setMyLocation]   = useState<{ centre: [number, number]; place: string | null } | null>(null)
@@ -74,27 +105,33 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
   const [heatPoints, setHeatPoints]   = useState<HeatPoint[]>([])
   const [pins, setPins]               = useState<TrainerPoint[]>([])
   const [ppds, setPPDs]               = useState<PPDPoint[]>([])
-  const [selectedPPDName, setSelectedPPDName] = useState<string | null>(startsDrilledDown ? initialDistrictName : null)
+  const [selectedPPDName, setSelectedPPDName] = useState<string | null>(startsDrilledDown && !openedFromCalendar ? initialDistrictName : null)
 
   // ── Mode B state ──────────────────────────────────────────────
-  const [venueSearch, setVenueSearch] = useState('')
-  const [venueName, setVenueName]     = useState<string | null>(null)
+  const [venueSearch, setVenueSearch] = useState(ws?.venue_name ?? '')
+  const [venueName, setVenueName]     = useState<string | null>(ws?.venue_name ?? null)
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null)
   const flyKeyRef = useRef(0)
   const [fitBoundsTarget, setFitBoundsTarget] = useState<FitBoundsTarget | null>(null)
   const fitBoundsKeyRef = useRef(0)
 
   // ── Phase 4 state ─────────────────────────────────────────────
-  const [startDate, setStartDate]     = useState('')
-  const [endDate, setEndDate]         = useState('')
+  const [startDate, setStartDate]     = useState(ws?.start_date ?? '')
+  const [endDate, setEndDate]         = useState(ws?.end_date ?? '')
   const [isRecommending, setIsRecommending] = useState(false)
   const [recommendations, setRecommendations] = useState<TrainerPoint[]>([])
-  const [engagementId, setEngagementId] = useState<string | null>(null)
-  const [trainingTitle, setTrainingTitle] = useState('')
-  const [trainersNeeded, setTrainersNeeded] = useState(1)
+  const [engagementId, setEngagementId] = useState<string | null>(ws?.engagement_id ?? null)
+  const [trainingTitle, setTrainingTitle] = useState(ws?.training_title ?? '')
+  const [trainersNeeded, setTrainersNeeded] = useState(initialWorkshop?.trainers_needed ?? 1)
+  // Set while staffing an existing workshop opened from the Calendar
+  const [workshopLock, setWorkshopLock] = useState<WorkshopLock | null>(() =>
+    initialWorkshop ? { loading: false, error: null, open: workshopIsOpen(initialWorkshop) }
+    : initialWorkshopFailed ? { loading: false, error: t.booking.workshopLoadFailed, open: false }
+    : null,
+  )
 
   // ── Multi-trainer batch invite state ───────────────────────────
-  const [invitedTrainers, setInvitedTrainers] = useState<InvitedTrainerStatus[]>([])
+  const [invitedTrainers, setInvitedTrainers] = useState<InvitedTrainerStatus[]>(initialWorkshop?.trainers ?? [])
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false)
   const [selectedTrainerIds, setSelectedTrainerIds] = useState<Set<string>>(new Set())
   const [reviewModalOpen, setReviewModalOpen] = useState(false)
@@ -254,18 +291,28 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
     }
   }, [])
 
+  // A workshop loaded server-side already has fresh statuses — skip the
+  // first refetch for it
+  const preloadedEngagementId = ws?.engagement_id ?? null
+  const skipStatusFetchRef = useRef(!!initialWorkshop)
   useEffect(() => {
+    if (skipStatusFetchRef.current && engagementId === preloadedEngagementId) {
+      skipStatusFetchRef.current = false
+      return
+    }
+    skipStatusFetchRef.current = false
     if (engagementId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate fetch-on-change, not a derived-state anti-pattern
       fetchEngagementStatus(engagementId)
     } else {
       setInvitedTrainers([])
     }
-  }, [engagementId, fetchEngagementStatus])
+  }, [engagementId, fetchEngagementStatus, preloadedEngagementId])
 
   const handleRefreshStatus = useCallback(() => {
     if (engagementId) fetchEngagementStatus(engagementId)
   }, [engagementId, fetchEngagementStatus])
+
 
   // ── Phase 4: recommend (reuses engagementId across invite rounds) ──
   const handleRecommend = useCallback(async () => {
@@ -309,6 +356,18 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
     }
   }, [centre, selectedItemIds, startDate, endDate, radiusKm, venueName, engagementId, trainingTitle, trainersNeeded, invitedTrainerIds])
 
+  // Calendar → Invite: the workshop's saved criteria still apply, so show
+  // its available trainers straight away (ONE search, same as pressing
+  // Find). Changing the skills or radius afterwards waits for the Find
+  // button — no automatic re-search (user decision 2026-11-06).
+  const autoSearchDoneRef = useRef(false)
+  useEffect(() => {
+    if (autoSearchDoneRef.current || !initialWorkshop || !workshopIsOpen(initialWorkshop)) return
+    autoSearchDoneRef.current = true
+    void handleRecommend()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once, for the workshop loaded with the page
+  }, [])
+
   // ── Multi-trainer batch invite ─────────────────────────────────
   const handleToggleSelectTrainer = useCallback((trainerId: string) => {
     setSelectedTrainerIds(prev => {
@@ -341,6 +400,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
   // ── Mode switch ───────────────────────────────────────────────
   const handleSetAppMode = useCallback((newMode: 'A' | 'B') => {
     setAppMode(newMode)
+    setWorkshopLock(null)
+    setInvitedTrainers([])
     // Mode A restores the district-default centre (same as on initial mount);
     // Mode B always starts with no venue selected.
     setCentre(newMode === 'A' && startsDrilledDown ? initialCenter : null)
@@ -360,10 +421,16 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
     setEngagementId(null)
     setSelectedTrainerIds(new Set())
     setReviewModalOpen(false)
-  }, [startsDrilledDown, initialCenter, initialDistrictName])
+    if (openedFromCalendar) router.replace('/dashboard')
+  }, [startsDrilledDown, initialCenter, initialDistrictName, openedFromCalendar, router])
+
+  // "Start a new search instead" — leave the reopened workshop, stay in Mode B
+  const handleLeaveWorkshop = useCallback(() => handleSetAppMode('B'), [handleSetAppMode])
 
   const appModeRef = useRef(appMode)
   useEffect(() => { appModeRef.current = appMode }, [appMode])
+  const workshopLockRef = useRef(workshopLock)
+  useEffect(() => { workshopLockRef.current = workshopLock }, [workshopLock])
 
   // ── Mode A handlers ───────────────────────────────────────────
   const handleDropPin = useCallback((lat: number, lng: number) => {
@@ -403,6 +470,12 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
       const lat = pos.coords.latitude
       const lng = pos.coords.longitude
       setGeoError(null)
+      // A reopened workshop keeps its venue — just show where the user is
+      if (appModeRef.current === 'B' && workshopLockRef.current) {
+        flyKeyRef.current += 1
+        setFlyToTarget({ lat, lng, zoom: 12, key: flyKeyRef.current })
+        return
+      }
       const here: [number, number] = [lat, lng]
       setCentre(here)
       setMyLocation({ centre: here, place: null })
@@ -517,8 +590,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
           heatPoints={heatPoints}
           pins={pins}
           ppds={ppds}
-          initialCenter={initialCenter}
-          initialZoom={initialZoom}
+          initialCenter={mapStartCenter}
+          initialZoom={mapStartZoom}
           centre={centre}
           radiusKm={radiusKm}
           ppdName={centreLabel}
@@ -579,6 +652,8 @@ export function DashboardMap({ skills, initialCenter, initialZoom, initialDistri
           onCloseReview={handleCloseReview}
           onInviteSent={handleInviteSent}
           districtKey={districtKey}
+          workshopLock={workshopLock}
+          onLeaveWorkshop={workshopLock ? handleLeaveWorkshop : undefined}
         />
       </div>
     </div>

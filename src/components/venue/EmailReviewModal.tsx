@@ -5,6 +5,7 @@ import { useLanguage } from '@/i18n/LanguageProvider'
 import { mergeTemplate } from '@/lib/emailTemplate'
 import { buildInvitationEmail } from '@/lib/emailContent'
 import { limitLevel, type EngagementCount } from '@/lib/engagementLimit'
+import { conflictText } from '@/lib/bookingConflictText'
 
 export interface SelectedTrainer {
   trainer_id:   string
@@ -23,6 +24,15 @@ export interface SentResult {
 export interface SkippedResult {
   trainer_id: string
   reason: string
+  // reason 'date_conflict' (migration 031): where they are already booked
+  conflict?: DateConflict
+}
+
+interface DateConflict {
+  trainer_id:     string
+  training_title: string | null
+  start_date:     string
+  end_date:       string
 }
 
 interface EmailReviewModalProps {
@@ -52,6 +62,9 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
   const [sending, setSending]   = useState(false)
   const [results, setResults]   = useState<{ sent: SentResult[]; skipped: SkippedResult[] } | null>(null)
   const [error, setError]       = useState<string | null>(null)
+  // Selected trainers already booked on overlapping dates (from the
+  // preview) — warned about before Send and left out of it
+  const [conflicts, setConflicts] = useState<DateConflict[]>([])
 
   useEffect(() => {
     if (!open) {
@@ -82,6 +95,7 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
         setStartDate(data.start_date ?? null)
         setEndDate(data.end_date ?? null)
         setExpiresAt(data.expires_at ?? null)
+        setConflicts(Array.isArray(data.conflicts) ? data.conflicts : [])
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Failed to load draft'))
       .finally(() => setLoadingDraft(false))
@@ -92,6 +106,9 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
 
   const previewTrainerName = selectedTrainers.find(t => t.trainer_id === previewId)?.trainer_name ?? ''
   const overLimit = selectedTrainers.filter(st => st.engagement && limitLevel(st.engagement) === 'reached')
+  const conflictIds = new Set(conflicts.map(c => c.trainer_id))
+  const sendable    = selectedTrainers.filter(st => !conflictIds.has(st.trainer_id))
+  const nameOf      = (id: string) => selectedTrainers.find(st => st.trainer_id === id)?.trainer_name ?? id
   const mergedPreview = expiresAt
     ? buildInvitationEmail({
         lang:          emailLang,
@@ -239,6 +256,18 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
 
                   {error && <p style={{ fontSize: 11, color: '#B91C1C', marginBottom: 10 }}>{error}</p>}
 
+                  {/* Double-booking (migration 031) — these are NOT sent */}
+                  {conflicts.length > 0 && (
+                    <div style={{ fontSize: 11, color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
+                      <p style={{ margin: 0, fontWeight: 700 }}>⚠ {t.booking.reviewConflictTitle}</p>
+                      <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
+                        {conflicts.map(c => (
+                          <li key={c.trainer_id}>{nameOf(c.trainer_id)} — {conflictText(t, c)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
                   {/* Soft engagement-limit warning — informs, never blocks Send */}
                   {overLimit.length > 0 && (
                     <div style={{ fontSize: 11, color: '#B91C1C', background: '#FEE2E2', border: '1px solid #F87171', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
@@ -258,15 +287,15 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
                       {t.common.cancel}
                     </button>
                     <button
-                      onClick={() => handleSend(selectedTrainers.map(t => t.trainer_id))}
-                      disabled={sending || !subject || !message}
+                      onClick={() => handleSend(sendable.map(t => t.trainer_id))}
+                      disabled={sending || !subject || !message || sendable.length === 0}
                       style={{
                         fontSize: 12, fontWeight: 700, color: 'white', background: '#12B5AC',
                         border: 'none', borderRadius: 8, padding: '8px 16px',
                         cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1,
                       }}
                     >
-                      {sending ? t.batchInvite.sending : `${t.batchInvite.sendToAll} ${selectedTrainers.length}`}
+                      {sending ? t.batchInvite.sending : `${t.batchInvite.sendToAll} ${sendable.length}`}
                     </button>
                   </div>
                 </>
@@ -287,7 +316,9 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
                 ))}
                 {results.skipped.map(r => (
                   <li key={r.trainer_id} style={{ fontSize: 12, color: '#B91C1C', padding: '4px 0' }}>
-                    ✗ {r.trainer_id} — {t.batchInvite.sendFailedOne} ({r.reason})
+                    {r.reason === 'date_conflict'
+                      ? <>✗ {nameOf(r.trainer_id)} — {r.conflict ? conflictText(t, r.conflict) : t.booking.conflictGeneric}</>
+                      : <>✗ {r.trainer_id} — {t.batchInvite.sendFailedOne} ({r.reason})</>}
                   </li>
                 ))}
               </ul>
@@ -295,9 +326,10 @@ export function EmailReviewModal({ open, onClose, engagementId, selectedTrainers
               {error && <p style={{ fontSize: 11, color: '#B91C1C', marginBottom: 10 }}>{error}</p>}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                {results.skipped.length > 0 && (
+                {results.skipped.some(s => s.reason !== 'date_conflict') && (
                   <button
-                    onClick={() => handleSend(results.skipped.map(s => s.trainer_id))}
+                    // a double-booked trainer would only be refused again
+                    onClick={() => handleSend(results.skipped.filter(s => s.reason !== 'date_conflict').map(s => s.trainer_id))}
                     disabled={sending}
                     style={{ fontSize: 12, fontWeight: 600, color: '#0E2F57', background: '#FEF3C7', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: sending ? 'not-allowed' : 'pointer' }}
                   >

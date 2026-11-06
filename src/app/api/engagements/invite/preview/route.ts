@@ -5,8 +5,7 @@ import { resolveVenueName } from '@/lib/email'
 import { defaultInvitationMessage, defaultInvitationSubject } from '@/lib/emailContent'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
 import { validateInviteDateRange } from '@/lib/dateValidation'
-
-const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
+import { inviteLinkExpiry, findBookingConflicts } from '@/lib/trainerBooking'
 
 // Generates the initial editable draft for a batch invite. No DB
 // writes — safe to call repeatedly as the admin adjusts the trainer
@@ -67,7 +66,13 @@ export async function POST(req: NextRequest) {
     .eq('trainer_id', trainer_ids[0])
     .single()
 
-  const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+  const expiresAt = inviteLinkExpiry(engagement.start_date as string | null)
+
+  // Selected trainers already booked on overlapping dates — shown in the
+  // review modal BEFORE Send; the send route skips them (migration 031)
+  const conflicts = await findBookingConflicts(
+    admin, trainer_ids, engagement.start_date as string | null, engagement.end_date as string | null, engagement_id,
+  )
 
   return NextResponse.json({
     subject:       defaultInvitationSubject(lang, trainingTitle),
@@ -79,5 +84,6 @@ export async function POST(req: NextRequest) {
     expires_at:    expiresAt.toISOString(),
     preview_trainer_name: firstTrainer?.trainer_name ?? '{{trainer_name}}',
     trainer_count: trainer_ids.length,
+    conflicts:     [...conflicts.values()],
   })
 }

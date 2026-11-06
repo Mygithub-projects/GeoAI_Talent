@@ -26,6 +26,7 @@ export interface AnalyticsData {
     confirmed:        number
     pending:          number
     declined:         number
+    noResponse:       number
     acceptRatePct:    number | null
     workshopsInvited: number
     workshopsStaffed: number
@@ -52,6 +53,7 @@ export interface AnalyticsData {
 const FILL_CONFIRMED = '#0E9C94'
 const FILL_PENDING   = '#B45309'
 const FILL_DECLINED  = '#475569'
+const FILL_NO_RESPONSE = '#94A3B8'   // light slate — distinct in lightness from Declined
 const FILL_PRIMARY   = '#1E63C4'
 
 // ── Small building blocks ─────────────────────────────────────────
@@ -171,7 +173,7 @@ export function AnalyticsClient({ data, scoped = false }: { data: AnalyticsData;
     }
   }
 
-  const inviteTotal = ad.confirmed + ad.pending + ad.declined
+  const inviteTotal = ad.confirmed + ad.pending + ad.declined + ad.noResponse
   const maxDistrict = Math.max(1, ...cov.districts.map(d => d.count))
 
   return (
@@ -203,16 +205,18 @@ export function AnalyticsClient({ data, scoped = false }: { data: AnalyticsData;
             {/* Stacked outcome bar — 2px surface gaps between segments */}
             <div style={{ display: 'flex', height: 22, borderRadius: 6, overflow: 'hidden', gap: 2, background: '#F6F8FB' }}
                  role="img"
-                 aria-label={`${a.adoptConfirmed}: ${ad.confirmed}, ${a.adoptPending}: ${ad.pending}, ${a.adoptDeclined}: ${ad.declined}`}>
+                 aria-label={`${a.adoptConfirmed}: ${ad.confirmed}, ${a.adoptPending}: ${ad.pending}, ${a.adoptDeclined}: ${ad.declined}, ${a.adoptNoResponse}: ${ad.noResponse}`}>
               {ad.confirmed > 0 && <div style={{ width: `${(ad.confirmed / inviteTotal) * 100}%`, background: FILL_CONFIRMED, borderRadius: 4 }} />}
               {ad.pending   > 0 && <div style={{ width: `${(ad.pending   / inviteTotal) * 100}%`, background: FILL_PENDING,   borderRadius: 4 }} />}
               {ad.declined  > 0 && <div style={{ width: `${(ad.declined  / inviteTotal) * 100}%`, background: FILL_DECLINED,  borderRadius: 4 }} />}
+              {ad.noResponse > 0 && <div style={{ width: `${(ad.noResponse / inviteTotal) * 100}%`, background: FILL_NO_RESPONSE, borderRadius: 4 }} />}
             </div>
             {/* Legend with direct counts — identity never by color alone */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginTop: 10, fontSize: 12, color: '#475569' }}>
               <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: FILL_CONFIRMED, marginRight: 6, verticalAlign: 'middle' }} />{a.adoptConfirmed}: <strong>{ad.confirmed}</strong></span>
               <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: FILL_PENDING, marginRight: 6, verticalAlign: 'middle' }} />{a.adoptPending}: <strong>{ad.pending}</strong></span>
               <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: FILL_DECLINED, marginRight: 6, verticalAlign: 'middle' }} />{a.adoptDeclined}: <strong>{ad.declined}</strong></span>
+              <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: FILL_NO_RESPONSE, marginRight: 6, verticalAlign: 'middle' }} />{a.adoptNoResponse}: <strong>{ad.noResponse}</strong></span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
               <StatTile label={a.adoptAcceptRate} value={ad.acceptRatePct != null ? `${ad.acceptRatePct}%` : '—'} accent={FILL_CONFIRMED} />

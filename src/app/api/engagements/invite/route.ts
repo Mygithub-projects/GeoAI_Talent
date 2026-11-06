@@ -8,8 +8,8 @@ import { mergeTemplate } from '@/lib/emailTemplate'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
 import { validateInviteDateRange } from '@/lib/dateValidation'
 import { getEngagementCounts, yearOf } from '@/lib/engagementLimit'
+import { inviteLinkExpiry, findBookingConflicts, isBookingConflictError, type BookingConflict } from '@/lib/trainerBooking'
 
-const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
 interface SentResult {
@@ -22,6 +22,8 @@ interface SentResult {
 interface SkippedResult {
   trainer_id: string
   reason: string
+  // reason 'date_conflict' (migration 031): the workshop they are already booked on
+  conflict?: BookingConflict
 }
 
 // Batch invite send — accepts the admin-edited subject/plain-text
@@ -98,10 +100,21 @@ export async function POST(req: NextRequest) {
     .in('trainer_id', trainer_ids)
 
   const alreadyInvited = new Set((existingRows ?? []).map(r => r.trainer_id as string))
-  const toInvite = trainer_ids.filter(id => !alreadyInvited.has(id))
+  const notYetInvited = trainer_ids.filter(id => !alreadyInvited.has(id))
   const skipped: SkippedResult[] = trainer_ids
     .filter(id => alreadyInvited.has(id))
     .map(id => ({ trainer_id: id, reason: 'already_invited' }))
+
+  // ── 6b. Never double-book: skip anyone already Pending/Confirmed on an
+  // overlapping workshop (migration 031's trigger is the hard guarantee;
+  // this gives the coordinator a clear reason instead of an error) ──
+  const conflicts = await findBookingConflicts(
+    admin, notYetInvited, engagement.start_date as string | null, engagement.end_date as string | null, engagement_id,
+  )
+  for (const [trainerId, conflict] of conflicts) {
+    skipped.push({ trainer_id: trainerId, reason: 'date_conflict', conflict })
+  }
+  const toInvite = notYetInvited.filter(id => !conflicts.has(id))
 
   if (toInvite.length === 0) {
     return NextResponse.json({ success: true, sent: [], skipped })
@@ -117,7 +130,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trainers not found' }, { status: 404 })
   }
 
-  const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+  // Never outlives the workshop: capped at the end of its start day
+  const expiresAt = inviteLinkExpiry(engagement.start_date as string | null)
   // `|| undefined` so a blank TEST_INBOX_EMAIL= line falls back to the
   // trainer's own email ('' is not nullish, so ?? alone would keep it)
   const testInbox = process.env.TEST_INBOX_EMAIL || undefined
@@ -164,6 +178,11 @@ export async function POST(req: NextRequest) {
         }))
     }
     if (rowErr) {
+      // Lost a race with another coordinator booking the same trainer
+      if (isBookingConflictError(rowErr)) {
+        skipped.push({ trainer_id: trainer.trainer_id, reason: 'date_conflict' })
+        return
+      }
       console.error('[invite] engagement_trainers insert error', trainer.trainer_id, rowErr)
       skipped.push({ trainer_id: trainer.trainer_id, reason: 'insert_failed' })
       return

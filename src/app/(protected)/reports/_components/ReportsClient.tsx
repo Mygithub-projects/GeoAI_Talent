@@ -17,6 +17,7 @@ function statusLabel(status: string, t: Translations): string {
     case 'Pending Invite': return t.reports.stPendingInvite
     case 'Confirmed':      return t.reports.stConfirmed
     case 'Declined':       return t.reports.stDeclined
+    case 'No Response':    return t.booking.statusNoResponse
     case 'Cancelled':      return t.reports.stCancelled
     default:               return status
   }
@@ -38,6 +39,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   'Pending Invite': { bg: '#FEF3C7', text: '#92400E' },
   'Confirmed':      { bg: '#CCFBF1', text: '#0F766E' },
   'Declined':       { bg: '#E2E8F0', text: '#475569' },
+  'No Response':    { bg: '#F1F5F9', text: '#64748B' },
   'Cancelled':      { bg: '#FEE2E2', text: '#B91C1C' },
 }
 
@@ -122,6 +124,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
     accepted:  filtered.reduce((s, w) => s + w.confirmedCount, 0),
     pending:   filtered.reduce((s, w) => s + w.pendingCount, 0),
     declined:  filtered.reduce((s, w) => s + w.declinedCount, 0),
+    noResponse: filtered.reduce((s, w) => s + w.noResponseCount, 0),
     estCost:   filtered.reduce((s, w) => s + w.estCostConfirmedMyr, 0),
   }), [filtered])
 
@@ -199,7 +202,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
 
   const inputStyle = { fontSize: 13, padding: '8px 12px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white' } as const
   const STATUSES  = ['Draft', 'Pending Invite', 'Confirmed', 'Declined', 'Cancelled']
-  const RESPONSES = ['Pending Invite', 'Confirmed', 'Declined']
+  const RESPONSES = ['Pending Invite', 'Confirmed', 'Declined', 'No Response']
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -222,6 +225,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
           [r.chipAccepted,  String(totals.accepted), '#0F766E'],
           [r.chipPending,   String(totals.pending),  '#92400E'],
           [r.chipDeclined,  String(totals.declined), '#B91C1C'],
+          [r.chipNoResponse, String(totals.noResponse), '#64748B'],
           [r.chipEstCost,   fmtMyr(totals.estCost),  '#0E2F57'],
         ].map(([label, value, color]) => (
           <div key={label} style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 10, padding: '8px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
@@ -269,14 +273,14 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: 860 }}>
           <thead>
             <tr style={{ background: '#F6F8FB', borderBottom: '1px solid #E2E8F0' }}>
-              {['', r.thWorkshop, r.thDates, r.thDistrict, r.thStatus, r.thInvited, r.thAccepted, r.thPending, r.thDeclined, r.thEstCost].map((h, i) => (
+              {['', r.thWorkshop, r.thDates, r.thDistrict, r.thStatus, r.thInvited, r.thAccepted, r.thPending, r.thDeclined, r.thNoResponse, r.thEstCost].map((h, i) => (
                 <th key={i} style={{ padding: '10px 12px', textAlign: i >= 5 ? 'right' : 'left', fontSize: 10, fontWeight: 700, color: '#94A3B8', letterSpacing: '0.6px', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={10} style={{ padding: 24, textAlign: 'center', color: '#94A3B8' }}>{r.noWorkshops}</td></tr>
+              <tr><td colSpan={11} style={{ padding: 24, textAlign: 'center', color: '#94A3B8' }}>{r.noWorkshops}</td></tr>
             ) : filtered.map((w, i) => {
               const isOpen = expanded.has(w.engagement_id)
               const canManage = isAdmin || w.created_by === userId
@@ -312,6 +316,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", color: '#0F766E', fontWeight: 700 }}>{w.confirmedCount}/{w.trainers_needed}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", color: '#92400E' }}>{w.pendingCount}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", color: '#B91C1C' }}>{w.declinedCount}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", color: '#64748B' }}>{w.noResponseCount}</td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' }}>
                       {fmtMyr(w.estCostConfirmedMyr)}
                       {w.estCostInvitedMyr !== w.estCostConfirmedMyr && (
@@ -322,7 +327,7 @@ export function ReportsClient({ workshops: initialWorkshops, isAdmin, userId, cl
 
                   {isOpen && (
                     <tr style={{ background: '#F8FAFC' }}>
-                      <td colSpan={10} style={{ padding: '4px 14px 16px 42px' }}>
+                      <td colSpan={11} style={{ padding: '4px 14px 16px 42px' }}>
                         {canManage && classificationAvailable && hasPendingRows && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '8px 0' }}>
                             <button

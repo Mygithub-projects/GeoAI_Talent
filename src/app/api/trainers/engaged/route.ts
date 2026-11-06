@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient }      from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Phase 8A — trainer IDs with a non-declined invite on any non-Cancelled
+// Phase 8A — trainer IDs Pending/Confirmed on any non-Cancelled
 // workshop overlapping the given date range. Powers the optional
 // date-range filter on the Talent Distribution view (show trainers
 // available vs engaged in a window). Returns ONLY trainer IDs — no
@@ -58,7 +58,9 @@ export async function GET(req: NextRequest) {
     .from('engagement_trainers')
     .select('trainer_id')
     .in('engagement_id', engagementIds)
-    .neq('status', 'Declined')
+    // Booked = Pending/Confirmed only; Declined and No Response (migration
+    // 031) trainers are free again
+    .in('status', ['Pending Invite', 'Confirmed'])
   if (etErr) {
     console.error('[trainers/engaged]', etErr)
     return NextResponse.json({ error: 'Database error' }, { status: 500 })

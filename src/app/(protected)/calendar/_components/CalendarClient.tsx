@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useLanguage } from '@/i18n/LanguageProvider'
 import type { CalendarEngagement } from '@/app/api/calendar/route'
 import type { Translations } from '@/i18n'
+import { conflictText, apiErrorText } from '@/lib/bookingConflictText'
 
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   'Confirmed':      { bg: '#CCFBF1', border: '#12B5AC', text: '#0F766E' },
@@ -17,6 +18,7 @@ const TRAINER_STATUS_PILL: Record<string, { symbol: string; color: string }> = {
   'Confirmed':      { symbol: '✓', color: '#0F766E' },
   'Declined':       { symbol: '✗', color: '#B91C1C' },
   'Pending Invite': { symbol: '⏳', color: '#92400E' },
+  'No Response':    { symbol: '○', color: '#64748B' },
 }
 
 function toDateOnly(s: string) {
@@ -33,6 +35,7 @@ function statusLabel(status: string, t: Translations): string {
     case 'Pending Invite': return t.calendar.statusPendingInvite
     case 'Confirmed':      return t.calendar.statusConfirmed
     case 'Declined':       return t.calendar.statusDeclined
+    case 'No Response':    return t.booking.statusNoResponse
     case 'Cancelled':      return t.calendar.statusCancelled
     default:               return status
   }
@@ -48,6 +51,15 @@ interface RescheduleResultRow {
   trainer_id:      string
   trainer_name:    string
   email_delivered: boolean
+}
+
+// A trainer the new dates would double-book (migration 031) — the
+// reschedule is refused and these are listed in the edit form
+interface DateConflictRow {
+  trainer_id:     string
+  training_title: string | null
+  start_date:     string
+  end_date:       string
 }
 
 export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
@@ -75,6 +87,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
   const [rescheduleResult, setRescheduleResult] = useState<RescheduleResultRow[] | null>(null)
   // Per-trainer apology-email outcomes after a whole-workshop cancel
   const [cancelResult, setCancelResult] = useState<RescheduleResultRow[] | null>(null)
+  const [dateConflicts, setDateConflicts] = useState<DateConflictRow[] | null>(null)
 
   const fetchMonth = useCallback(async (y: number, m: number, opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true)
@@ -143,12 +156,14 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
     setActionError(null)
     setRescheduleResult(null)
     setCancelResult(null)
+    setDateConflicts(null)
   }
 
   // Returns the parsed response body on success, null on failure
   async function postAction(url: string, body: object): Promise<Record<string, unknown> | null> {
     setActionBusy(true)
     setActionError(null)
+    setDateConflicts(null)
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -156,7 +171,14 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error ?? 'Action failed')
+      if (!res.ok) {
+        // Reschedule refused: list each clashing trainer instead of one line
+        if (data?.code === 'TRAINER_DATE_CONFLICT' && Array.isArray(data.conflicts)) {
+          setDateConflicts(data.conflicts as DateConflictRow[])
+          return null
+        }
+        throw new Error(apiErrorText(t, data, 'Action failed'))
+      }
       return data as Record<string, unknown>
     } catch (e) {
       setActionError((e as Error).message)
@@ -273,6 +295,14 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
 
   const canManage = selected ? (isAdmin || selected.created_by === userId) : false
   const selectedIsDraft = selected?.workflow_status === 'Draft'
+  // Invite button (2026-11-06): add or re-invite trainers on THIS workshop
+  // via the search screen instead of creating it again. Only while it can
+  // still take invitations — not started, not fully staffed (the calendar
+  // feed never includes Cancelled workshops).
+  const canInvite = !!selected && canManage
+    && selected.start_date >= todayStr
+    && selected.confirmed_count < selected.trainers_needed
+    && (selected.workflow_status === 'Draft' || selected.workflow_status === 'Pending Invite')
 
   const inputStyle: React.CSSProperties = { width: '100%', fontSize: 13, padding: '7px 10px', border: '1px solid #E2E8F0', borderRadius: 8 }
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 10, fontWeight: 700, color: '#64748B', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }
@@ -471,9 +501,21 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
                   )}
 
                   {actionError && <p style={{ fontSize: 11, color: '#B91C1C', marginBottom: 10 }}>{actionError}</p>}
+                  {dateConflicts && dateConflicts.length > 0 && (
+                    <div style={{ fontSize: 11, color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
+                      <p style={{ margin: '0 0 4px', fontWeight: 700 }}>⚠ {t.booking.rescheduleConflictTitle}</p>
+                      <ul style={{ margin: 0, paddingLeft: 16 }}>
+                        {dateConflicts.map(c => (
+                          <li key={c.trainer_id}>
+                            {selected.trainers.find(tr => tr.trainer_id === c.trainer_id)?.trainer_name ?? c.trainer_id} — {conflictText(t, c)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
-                    <button onClick={() => { setEditing(false); setActionError(null) }}
+                    <button onClick={() => { setEditing(false); setActionError(null); setDateConflicts(null) }}
                       style={{ fontSize: 12, fontWeight: 600, color: '#64748B', background: 'transparent', border: '1px solid #E2E8F0', borderRadius: 8, padding: '8px 16px', cursor: 'pointer' }}>
                       {t.common.cancel}
                     </button>
@@ -516,7 +558,7 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
                           <li key={tr.trainer_id} style={{ fontSize: 12, padding: '3px 0', display: 'flex', gap: 6, alignItems: 'baseline' }}>
                             <span style={{ color: pill.color, fontWeight: 700 }}>{pill.symbol}</span>
                             <span>{tr.trainer_name}</span>
-                            <span style={{ color: '#94A3B8', fontSize: 11 }}>({tr.status})</span>
+                            <span style={{ color: '#94A3B8', fontSize: 11 }}>({statusLabel(tr.status, t)})</span>
                           </li>
                         )
                       })}
@@ -526,6 +568,13 @@ export function CalendarClient({ userId, isAdmin }: CalendarClientProps) {
                   {actionError && <p style={{ fontSize: 11, color: '#B91C1C', margin: '10px 0 0' }}>{actionError}</p>}
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                    {canInvite && (
+                      <Link href={`/dashboard?engagement=${selected.engagement_id}`}
+                        title={t.booking.inviteButtonHint}
+                        style={{ fontSize: 12, fontWeight: 700, color: 'white', background: '#1E63C4', border: 'none', borderRadius: 8, padding: '7px 14px', textDecoration: 'none' }}>
+                        + {t.booking.inviteButton}
+                      </Link>
+                    )}
                     {canManage && (
                       <>
                         <button onClick={() => setEditing(true)}

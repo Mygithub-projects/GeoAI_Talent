@@ -197,10 +197,10 @@ export async function POST(req: NextRequest) {
         type:    accepted ? 'trainer_accepted' : 'trainer_declined',
         message_en: accepted
           ? `${trainerName} accepted the invitation${workshop ? ` for "${workshop}"` : ''}.`
-          : `${trainerName} declined the invitation${workshop ? ` for "${workshop}"` : ''}.`,
+          : `${trainerName} declined the invitation${workshop ? ` for "${workshop}"` : ''} and is back in the trainer pool. You can invite another trainer from the Calendar.`,
         message_bm: accepted
           ? `${trainerName} menerima jemputan${workshop ? ` untuk "${workshop}"` : ''}.`
-          : `${trainerName} menolak jemputan${workshop ? ` untuk "${workshop}"` : ''}.`,
+          : `${trainerName} menolak jemputan${workshop ? ` untuk "${workshop}"` : ''} dan kini kembali ke senarai jurulatih. Anda boleh menjemput jurulatih lain melalui Kalendar.`,
       })
     }
   } catch (err) {

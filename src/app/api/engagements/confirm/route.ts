@@ -3,10 +3,13 @@ import { createClient }      from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { recomputeEngagementStatus } from '@/lib/engagementRollup'
 import { checkEngagementAccess } from '@/lib/engagementAuth'
+import { findBookingConflicts, isBookingConflictError, describeConflict } from '@/lib/trainerBooking'
 
 // Manual override: marks one trainer's pending invite as Confirmed
 // without them clicking the email link (e.g. they confirmed verbally).
-// Recomputes the parent workshop rollup.
+// Also allowed for a trainer the hourly job released as No Response
+// (migration 031) — but never onto dates they are already booked for
+// elsewhere. Recomputes the parent workshop rollup.
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,19 +41,48 @@ export async function POST(req: NextRequest) {
 
   if (!engTrainer)
     return NextResponse.json({ error: 'This trainer has not been invited to this engagement' }, { status: 404 })
-  if (engTrainer.status !== 'Pending Invite')
+  const previousStatus = engTrainer.status as string
+  if (previousStatus !== 'Pending Invite' && previousStatus !== 'No Response')
     return NextResponse.json(
-      { error: `Can only confirm a Pending Invite trainer (current: "${engTrainer.status}")` },
+      { error: `Can only confirm a Pending Invite or No Response trainer (current: "${previousStatus}")` },
       { status: 409 },
     )
 
-  const { error: updateErr } = await admin
-    .from('engagement_trainers')
-    .update({ status: 'Confirmed', responded_at: new Date().toISOString() })
-    .eq('id', engTrainer.id)
+  if (previousStatus === 'No Response') {
+    const { data: engagement } = await admin
+      .from('training_engagements')
+      .select('workflow_status, start_date, end_date')
+      .eq('engagement_id', engagement_id)
+      .single()
+    if (!engagement || engagement.workflow_status === 'Cancelled')
+      return NextResponse.json({ error: 'This workshop has been cancelled' }, { status: 409 })
+    const conflict = (await findBookingConflicts(
+      admin, [trainer_id], engagement.start_date as string | null, engagement.end_date as string | null, engagement_id,
+    )).get(trainer_id)
+    if (conflict)
+      return NextResponse.json(
+        { error: describeConflict(conflict), code: 'TRAINER_DATE_CONFLICT', conflict },
+        { status: 409 },
+      )
+  }
 
-  if (updateErr)
+  const confirmed = { status: 'Confirmed', responded_at: new Date().toISOString() }
+  let { error: updateErr } = await admin
+    .from('engagement_trainers')
+    .update(previousStatus === 'No Response' ? { ...confirmed, released_at: null } : confirmed)
+    .eq('id', engTrainer.id)
+  if (updateErr && /released_at/i.test(updateErr.message ?? '')) {
+    ;({ error: updateErr } = await admin.from('engagement_trainers').update(confirmed).eq('id', engTrainer.id))
+  }
+
+  if (updateErr) {
+    if (isBookingConflictError(updateErr))
+      return NextResponse.json(
+        { error: 'This trainer is already booked on overlapping dates', code: 'TRAINER_DATE_CONFLICT' },
+        { status: 409 },
+      )
     return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  }
 
   await recomputeEngagementStatus(admin, engagement_id)
 
@@ -63,6 +95,7 @@ export async function POST(req: NextRequest) {
       trainer_id,
       method:     'manual_admin',
       note:       note ?? null,
+      previous_status: previousStatus,
       actor_name: profile?.full_name,
     },
   })

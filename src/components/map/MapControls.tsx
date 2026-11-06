@@ -1,7 +1,7 @@
 'use client'
 
 import { useLanguage } from '@/i18n/LanguageProvider'
-import { VenueSearchPanel } from '@/components/venue/VenueSearchPanel'
+import { VenueSearchPanel, type WorkshopLock } from '@/components/venue/VenueSearchPanel'
 import { RecommendationPanel, type InvitedTrainerStatus } from '@/components/venue/RecommendationPanel'
 import { EmailReviewModal, type SentResult, type SkippedResult } from '@/components/venue/EmailReviewModal'
 import { SkillCheckboxFilter } from '@/components/map/SkillCheckboxFilter'
@@ -67,6 +67,9 @@ interface MapControlsProps {
   onInviteSent:          (results: { sent: SentResult[]; skipped: SkippedResult[] }) => void
   // Dashboard colour key (PPD badge + trainer districts); null = hidden
   districtKey?:          DistrictKeyRow[] | null
+  // Existing workshop opened from the Calendar's Invite button
+  workshopLock?:         WorkshopLock | null
+  onLeaveWorkshop?:      () => void
 }
 
 function LocationIcon() {
@@ -131,6 +134,8 @@ export function MapControls({
   onCloseReview,
   onInviteSent,
   districtKey,
+  workshopLock = null,
+  onLeaveWorkshop,
 }: MapControlsProps) {
   const { t } = useLanguage()
 
@@ -219,6 +224,8 @@ export function MapControls({
             onTrainingTitleChange={onTrainingTitleChange}
             trainersNeeded={trainersNeeded}
             onTrainersNeededChange={onTrainersNeededChange}
+            workshopLock={workshopLock}
+            onLeaveWorkshop={onLeaveWorkshop}
           />
         )}
       </div>
@@ -285,6 +292,8 @@ export function MapControls({
           isRefreshingStatus={isRefreshingStatus}
           onOpenReview={onOpenReview}
           trainersNeeded={trainersNeeded}
+          // Re-invite needs a saved workshop that can still take invitations
+          canReinvite={!!engagementId && (!workshopLock || (!workshopLock.loading && workshopLock.open))}
         />
       )}
 

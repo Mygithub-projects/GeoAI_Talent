@@ -8,6 +8,9 @@ import { buildRescheduleEmail } from '@/lib/emailContent'
 import { recomputeEngagementStatus } from '@/lib/engagementRollup'
 import { validateInviteDateRange } from '@/lib/dateValidation'
 import { getTrainerLocales } from '@/lib/trainerLocale'
+import {
+  inviteLinkExpiry, findBookingConflicts, isBookingConflictError, describeConflict, BOOKED_STATUSES,
+} from '@/lib/trainerBooking'
 
 // Edit a workshop's details (creator or admin).
 // - training_title / dynamic_venue_name: editable while not Cancelled
@@ -17,8 +20,9 @@ import { getTrainerLocales } from '@/lib/trainerLocale'
 //   Pending Invite / Confirmed trainer is reset to Pending Invite, their
 //   outstanding links invalidated, and a fresh date-change email with
 //   new accept/decline links is sent so consent stays honest.
+//   Since migration 031 a reschedule is REFUSED (409 TRAINER_DATE_CONFLICT)
+//   if any active trainer is already booked elsewhere on the new dates.
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
-const INVITE_EXPIRY_DAYS = parseInt(process.env.INVITE_EXPIRY_DAYS ?? '7', 10)
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
 interface RescheduledTrainer {
@@ -115,6 +119,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
   }
 
+  // ── Never move active trainers onto dates they are booked elsewhere ──
+  if (changes.start_date !== undefined) {
+    const { data: activeRows } = await admin
+      .from('engagement_trainers')
+      .select('trainer_id')
+      .eq('engagement_id', engagement_id)
+      .in('status', [...BOOKED_STATUSES])
+    const conflicts = await findBookingConflicts(
+      admin, (activeRows ?? []).map(r => r.trainer_id as string),
+      changes.start_date as string, changes.end_date as string, engagement_id,
+    )
+    if (conflicts.size > 0) {
+      const list = [...conflicts.values()]
+      return NextResponse.json(
+        {
+          error: `The new dates clash for: ${list.map(describeConflict).join('; ')}`,
+          code:  'TRAINER_DATE_CONFLICT',
+          conflicts: list,
+        },
+        { status: 409 },
+      )
+    }
+  }
+
   const { data: updated, error: upErr } = await admin
     .from('training_engagements')
     .update(changes)
@@ -122,6 +150,12 @@ export async function POST(req: NextRequest) {
     .select('engagement_id, training_title, dynamic_venue_name, start_date, end_date, workflow_status')
     .single()
   if (upErr) {
+    if (isBookingConflictError(upErr)) {
+      return NextResponse.json(
+        { error: 'The new dates clash with another booking of a trainer on this workshop', code: 'TRAINER_DATE_CONFLICT' },
+        { status: 409 },
+      )
+    }
     console.error('[engagement update] error', upErr)
     return NextResponse.json({ error: 'Update failed' }, { status: 500 })
   }
@@ -164,9 +198,7 @@ export async function POST(req: NextRequest) {
     const now = new Date()
     // Cap the link expiry at the new start date — a confirmation link
     // must never outlive the workshop it confirms.
-    const defaultExpiry = new Date(now.getTime() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
-    const startCap      = new Date(`${newStart}T23:59:59`)
-    const expiresAt     = startCap < defaultExpiry ? startCap : defaultExpiry
+    const expiresAt = inviteLinkExpiry(newStart, now)
 
     let affected: RescheduledTrainer[] = []
 

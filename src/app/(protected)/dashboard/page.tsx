@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checkEngagementAccess } from '@/lib/engagementAuth'
+import { getEngagementSnapshot, type EngagementSnapshot } from '@/lib/engagementSnapshot'
 import { DashboardMap } from './_components/DashboardMap'
 
 // Sarawak statewide defaults
@@ -7,7 +10,18 @@ const SARAWAK_CENTER: [number, number] = [2.55, 113.8]
 const SARAWAK_ZOOM = 7
 const DISTRICT_ZOOM = 10
 
-export default async function DashboardPage() {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  // ?engagement=<id> — opened from the Calendar's Invite button: reopen that
+  // existing workshop on the search screen (access is checked by the API)
+  searchParams: Promise<{ engagement?: string }>
+}) {
+  const { engagement } = await searchParams
+  const initialEngagementId = engagement && UUID_RE.test(engagement) ? engagement : null
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -50,12 +64,32 @@ export default async function DashboardPage() {
     }
   }
 
+  // Calendar → Invite: load the workshop HERE, before the page is drawn, so
+  // the map opens straight at the venue with the panel filled in. Loading it
+  // client-side meant a statewide map, a round trip, then a fly-in across
+  // six zoom levels (~245 map tiles of grey/white squares; 2026-11-06).
+  let initialWorkshop: EngagementSnapshot | null = null
+  let initialWorkshopFailed = false
+  if (initialEngagementId) {
+    const admin  = createAdminClient()
+    const access = await checkEngagementAccess(admin, initialEngagementId, user.id, profile.role)
+    const snap   = access.ok ? await getEngagementSnapshot(admin, initialEngagementId) : null
+    const e      = snap?.engagement
+    if (snap && e && e.venue_lat != null && e.venue_long != null && e.start_date && e.end_date) {
+      initialWorkshop = snap
+    } else {
+      initialWorkshopFailed = true
+    }
+  }
+
   return (
     <DashboardMap
       skills={skills}
       initialCenter={initialCenter}
       initialZoom={initialZoom}
       initialDistrictName={initialDistrictName}
+      initialWorkshop={initialWorkshop}
+      initialWorkshopFailed={initialWorkshopFailed}
     />
   )
 }
